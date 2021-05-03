@@ -1,4 +1,6 @@
 from ScrapeTask import ScrapeTask
 
-task = ScrapeTask(iterations=3)
+# play ground main script
+
+task = ScrapeTask(iterations=-1)
 task.start()

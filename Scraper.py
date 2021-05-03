@@ -6,7 +6,7 @@ import urllib
 from datetime import datetime
 from random import random
 from fake_useragent import UserAgent
-from Utils import log_exception, log_info, create_empty_file, log_warning
+from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -40,8 +40,7 @@ class LocaleInfo:
 
 
 class Scraper:
-    def __init__(self, on_proxy=False, headless=True, locale_code='us/en',
-                 category_codes=['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS']):
+    def __init__(self, on_proxy=False, headless=True, locale_code='us/en'):
         options = Options()
 
         # setup userAgent
@@ -62,19 +61,16 @@ class Scraper:
             options.add_argument('--disable-gpu')
         # setup proxy
         if on_proxy:
-            seleniumwire_options = {
-                'proxy': {
-                    "http": "http://jiangcheng1214.gmail.com:aa557799@gate2.proxyfuel.com:2000",
-                    "https": "http://jiangcheng1214.gmail.com:aa557799@gate2.proxyfuel.com:2000",
-                }
-            }
+            with open('credentials/proxy_config.json', 'r') as f:
+                proxy_option = json.load(f)
+                seleniumwire_options = proxy_option
 
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options, options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
         self.locale_code = locale_code
-        self.category_codes = category_codes
+        self.category_codes = supported_categories()
 
     def is_detected_by_anti_bot(self):
         if self.driver.find_elements_by_xpath('//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]'):
@@ -313,10 +309,10 @@ class Scraper:
 
     def create_timestamped_data_dir(self):
         self.timestamp = datetime.now().strftime("%Y%m%d_%H_%M_%S")
-        self.data_dir_path = os.path.join(os.getcwd(), 'data/{}'.format(self.timestamp))
+        self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.data_dir_path):
             os.makedirs(self.data_dir_path)
-        self.temp_dir_path = os.path.join(os.getcwd(), 'temp/{}'.format(self.timestamp))
+        self.temp_dir_path = os.path.join(os.getcwd(), 'temp/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.temp_dir_path):
             os.makedirs(self.temp_dir_path)
         self.product_dir_path = os.path.join(self.data_dir_path, 'product')
@@ -379,7 +375,7 @@ class Scraper:
             if len(results) != total:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
                 return get_product_info_from_category(category, retry + 1)
-            file_path = os.path.join(self.product_dir_path, '{}.json'.format(category))
+            file_path = os.path.join(self.product_dir_path, category)
             with open(file_path, 'w+') as f:
                 for r in results:
                     json.dump(r, f)

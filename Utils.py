@@ -31,3 +31,8 @@ def create_empty_file(dir_path, name):
     file_path = os.path.join(dir_path, name)
     with open(file_path, 'w+'):
         log_info('{} created!'.format(file_path))
+
+
+def supported_categories():
+    # return ['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS']
+    return ['WOMENBAGSSMALLLEATHERGOODS']

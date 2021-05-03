@@ -3,12 +3,12 @@ from datetime import datetime
 
 from Scraper import Scraper
 from Uploader import Uploader
+from Utils import supported_categories, log_info
 
 
 class ScrapeTask:
-    def __init__(self, iterations, interval_seconds=30,
-                 category_codes=['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS'], debug=False):
-        self.category_codes = category_codes
+    def __init__(self, iterations, interval_seconds=5*60, debug=False):
+        self.category_codes = supported_categories()
         self.results_dict = {}
         self.iterations = iterations
         self.interval_seconds = interval_seconds
@@ -16,7 +16,7 @@ class ScrapeTask:
         self.uploader = Uploader()
 
     def start(self):
-        scraper = Scraper(category_codes=self.category_codes, headless=not self.debug)
+        scraper = Scraper(headless=not self.debug)
         i = 0
         while 1:
             start_time = datetime.now()
@@ -28,16 +28,16 @@ class ScrapeTask:
             self.results_dict[flag] += 1
             if flag != "SUCCESS":
                 scraper.terminate()
-                scraper = Scraper(category_codes=self.category_codes, headless=not self.debug)
+                scraper = Scraper(headless=not self.debug)
             else:
-                print("upload started")
+                log_info("upload started")
                 self.uploader.upload_products(timestamp=scraper.timestamp)
 
                 time_until_next_scrape = self.interval_seconds - time_used_in_seconds
-                print("===== time_until_next_scrape:{}".format(time_until_next_scrape))
+                log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
                 if time_until_next_scrape > 0:
                     time.sleep(time_until_next_scrape)
-            print("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, results]))
+            log_info("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, results]))
             i += 1
             if i == self.iterations:
                 scraper.terminate()
