@@ -144,6 +144,3 @@ class DeltaChecker:
 
         else:
             log_info("no added items detected from {} to {}".format(base_timestamp, test_timestamp))
-
-deltaChecker = DeltaChecker()
-deltaChecker.check_delta("20210502_16_58_20")

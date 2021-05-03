@@ -26,6 +26,12 @@ class ScrapeTask:
             if flag not in self.results_dict:
                 self.results_dict[flag] = 0
             self.results_dict[flag] += 1
+            log_info("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, results]))
+            i += 1
+            if i == self.iterations:
+                scraper.terminate()
+                break
+
             if flag != "SUCCESS":
                 scraper.terminate()
                 scraper = Scraper(headless=not self.debug)
@@ -37,9 +43,5 @@ class ScrapeTask:
                 log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
                 if time_until_next_scrape > 0:
                     time.sleep(time_until_next_scrape)
-            log_info("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, results]))
-            i += 1
-            if i == self.iterations:
-                scraper.terminate()
-                break
-        print(self.results_dict)
+
+        log_info(self.results_dict)
