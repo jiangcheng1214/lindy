@@ -110,7 +110,7 @@ class Scraper:
             try:
                 WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located(
                     (By.XPATH, '//div[@class="geetest_replay"]')))
-                time.sleep(1)
+                time.sleep(random.uniform(1, 1.5))
                 WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located(
                     (By.XPATH, '//div[@style="display: none;" and @class="geetest_text_tip"]')))
             except Exception as ex:
@@ -162,12 +162,12 @@ class Scraper:
                 if retry_count >= 3:
                     return False
                 self.driver.find_element_by_xpath('//div[@class="geetest_refresh"]').click()
-                time.sleep(0.5)
+                time.sleep(random.uniform(0.5, 1))
                 log_info("clicked refresh audio button geetest_refresh")
                 return solve_audio_recaptha_attempt(retry_count=retry_count + 1)
             return True
 
-        time.sleep(2)
+        time.sleep(random.uniform(2, 3))
         captcha_iframe = self.driver.find_element_by_xpath(
             '//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]')
         self.driver.switch_to.frame(captcha_iframe)
@@ -175,7 +175,7 @@ class Scraper:
         try:
             WebDriverWait(self.driver, 30).until(
                 expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="geetest_radar_btn"]')))
-            time.sleep(1)
+            time.sleep(random.uniform(1, 2))
             self.driver.find_element_by_xpath('//div[@class="geetest_radar_btn"]').click()
             log_info("clicked verify button geetest_radar_btn")
             WebDriverWait(self.driver, 15).until(
@@ -188,7 +188,7 @@ class Scraper:
             #     time.sleep(1)
             #     return self.solve_recaptha()
             # else:
-            time.sleep(1)
+            time.sleep(random.uniform(1, 2))
             self.driver.find_element_by_xpath('//a[@class="geetest_voice"]').click()
             log_info("clicked voice verify button geetest_voice")
         except Exception as ex:
@@ -203,7 +203,7 @@ class Scraper:
         try:
             self.driver.get(url)
             log_info("opened url: {}".format(url))
-            time.sleep(2)
+            time.sleep(random.uniform(2, 3))
             if self.is_blocked():
                 log_info('blocked!')
                 return False
@@ -356,13 +356,16 @@ class Scraper:
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
+                random_wait = random.uniform(1.5, 3)
+                log_info("random_wait: {}".format(random_wait))
+                time.sleep(random_wait)
                 if not self.open_url_and_crack_antibot(URL):
                     log_info("open URL failed: {}".format(URL))
                     return get_product_info_from_category(category, retry + 1)
                 try:
                     WebDriverWait(self.driver, 10).until(
                         lambda driver: driver.find_element_by_tag_name("pre").text)
-                    time.sleep(0.2)
+                    time.sleep(random.uniform(0.2, 0.3))
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
                     if 'total' not in response_json:
                         log_exception("total is not a field of: {}".format(response_json))
