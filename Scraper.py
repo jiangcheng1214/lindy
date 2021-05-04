@@ -330,19 +330,6 @@ class Scraper:
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
             URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
 
-            # workaround to simulate human behavior
-            random_wait = random.uniform(1.5, 3)
-            log_info("random_wait: {}".format(random_wait))
-            time.sleep(random_wait)
-            self.driver.get(URL)
-            random_wait = random.uniform(1.5, 3)
-            log_info("random_wait: {}".format(random_wait))
-            time.sleep(random_wait)
-            self.driver.back()
-            random_wait = random.uniform(1.5, 3)
-            log_info("random_wait: {}".format(random_wait))
-            time.sleep(random_wait)
-
             open_success = self.open_url_and_crack_antibot(URL)
             if not open_success:
                 return get_product_info_from_category(category, retry + 1)
@@ -396,6 +383,20 @@ class Scraper:
             return True
 
         self.create_timestamped_data_dir()
+        URL = constants.HERMES_PRODUCT_API.format(self.locale_code, 'WOMENBAGSSMALLLEATHERGOODS', constants.PRODUCT_PAGE_SIZE, 0)
+
+        # workaround to simulate human behavior
+        random_wait = random.uniform(1.5, 3)
+        log_info("random_wait: {}".format(random_wait))
+        time.sleep(random_wait)
+        self.driver.get(URL)
+        random_wait = random.uniform(1.5, 3)
+        log_info("random_wait: {}".format(random_wait))
+        time.sleep(random_wait)
+        self.driver.back()
+        random_wait = random.uniform(1.5, 3)
+        log_info("random_wait: {}".format(random_wait))
+        time.sleep(random_wait)
 
         for category_code in self.category_codes:
             if get_product_info_from_category(category_code):
