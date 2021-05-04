@@ -30,13 +30,15 @@ class DeltaChecker:
 
     def download(self, cloud_path, local_path):
         try:
-            self.storage.child(cloud_path).download(path=local_path, filename=local_path)
-        except Exception:
-            pass
-        try:
             self.storage.child(cloud_path).download(filename=local_path)
+            return
         except Exception:
-            pass
+            log_info("self.storage.child(cloud_path).download(filename=local_path) exception")
+        try:
+            self.storage.child(cloud_path).download(path=local_path, filename=local_path)
+            return
+        except Exception:
+            log_info("self.storage.child(cloud_path).download(path=local_path, filename=local_path) exception")
 
     def download_data_for_delta_check(self, base_timestamp, test_timestamp):
         path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path, base_timestamp, test_timestamp)
