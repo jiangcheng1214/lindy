@@ -28,29 +28,30 @@ class DeltaChecker:
     def get_latest_timestamp(self):
         return self.database.child('latest_timestamp').get().val()
 
-    def download_data_for_delta_check(self, base_timestamp, test_timestamp):
+    def download(self, cloud_path, local_path):
         try:
-            path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path, base_timestamp, test_timestamp)
-            if not os.path.isdir(path_to_local_dir):
-                os.makedirs(path_to_local_dir)
-            for category_code in self.category_codes:
-                path_to_base_data_on_cloud = "products/{}/{}".format(base_timestamp, category_code)
-                path_to_base_data = "{}/{}_{}".format(path_to_local_dir, base_timestamp, category_code)
-                self.storage.child(path_to_base_data_on_cloud).download(path=path_to_base_data, filename=path_to_base_data)
-                if not os.path.isfile(path_to_base_data):
-                    self.storage.child(path_to_base_data_on_cloud).download(filename=path_to_base_data)
-                assert os.path.isfile(path_to_base_data)
-                path_to_test_data_on_cloud = "products/{}/{}".format(test_timestamp, category_code)
-                path_to_test_data = "{}/{}_{}".format(path_to_local_dir, test_timestamp, category_code)
-                self.storage.child(path_to_test_data_on_cloud).download(path=path_to_test_data,
-                                                                        filename=path_to_test_data)
-                if not os.path.isfile(path_to_test_data):
-                    self.storage.child(path_to_test_data_on_cloud).download(filename=path_to_test_data)
-
-                assert os.path.isfile(path_to_test_data)
-            return path_to_local_dir
+            self.storage.child(cloud_path).download(path=local_path, filename=local_path)
         except Exception:
-            return None
+            pass
+        try:
+            self.storage.child(cloud_path).download(filename=local_path)
+        except Exception:
+            pass
+
+    def download_data_for_delta_check(self, base_timestamp, test_timestamp):
+        path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path, base_timestamp, test_timestamp)
+        if not os.path.isdir(path_to_local_dir):
+            os.makedirs(path_to_local_dir)
+        for category_code in self.category_codes:
+            path_to_base_data_on_cloud = "products/{}/{}".format(base_timestamp, category_code)
+            path_to_base_data = "{}/{}_{}".format(path_to_local_dir, base_timestamp, category_code)
+            self.download(path_to_base_data_on_cloud, path_to_base_data)
+            assert os.path.isfile(path_to_base_data)
+            path_to_test_data_on_cloud = "products/{}/{}".format(test_timestamp, category_code)
+            path_to_test_data = "{}/{}_{}".format(path_to_local_dir, test_timestamp, category_code)
+            self.download(path_to_test_data_on_cloud, path_to_test_data)
+            assert os.path.isfile(path_to_test_data)
+        return path_to_local_dir
 
     def check_delta(self, test_timestamp):
         def dump_jsons_to_file(list_of_jsons, file_path):
