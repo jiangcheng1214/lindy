@@ -4,7 +4,7 @@ import re
 import time
 import urllib
 from datetime import datetime
-from random import random
+import random
 from fake_useragent import UserAgent
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories
 import pydub
@@ -48,8 +48,7 @@ class Scraper:
         operation_systems = [OperatingSystem.WINDOWS.name, OperatingSystem.LINUX.name]
         user_agent_rotator = UserAgent(software_names=software_names, operation_systems=operation_systems, limit=100)
         user_agent = user_agent_rotator.get_random_user_agent()
-        log_info("user_agent: {}".format(user_agent))
-        options.add_argument(f'user-agent={user_agent}')
+        options.add_argument('user-agent={}'.format(user_agent))
 
         # mute audio during cracking recapcha
         options.add_argument("--mute-audio")
@@ -64,7 +63,6 @@ class Scraper:
             with open('credentials/proxy_config.json', 'r') as f:
                 proxy_option = json.load(f)
                 seleniumwire_options = proxy_option
-
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options, options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
@@ -97,7 +95,7 @@ class Scraper:
                 self.driver.find_elements_by_xpath(xpath)[0].clear()
                 for c in value:
                     self.driver.find_elements_by_xpath(xpath)[0].send_keys(c)
-                    time.sleep(random() / 10)
+                    time.sleep(random.random() / 10)
             else:
                 log_info("xpath not found: {}".format(xpath))
                 return False
@@ -331,6 +329,20 @@ class Scraper:
                 return False
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
             URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
+
+            # workaround to simulate human behavior
+            random_wait = random.uniform(1.5, 3)
+            log_info("random_wait: {}".format(random_wait))
+            time.sleep(random_wait)
+            self.driver.get(URL)
+            random_wait = random.uniform(1.5, 3)
+            log_info("random_wait: {}".format(random_wait))
+            time.sleep(random_wait)
+            self.driver.back()
+            random_wait = random.uniform(1.5, 3)
+            log_info("random_wait: {}".format(random_wait))
+            time.sleep(random_wait)
+
             open_success = self.open_url_and_crack_antibot(URL)
             if not open_success:
                 return get_product_info_from_category(category, retry + 1)

@@ -37,11 +37,16 @@ class DeltaChecker:
                 path_to_base_data_on_cloud = "products/{}/{}".format(base_timestamp, category_code)
                 path_to_base_data = "{}/{}_{}".format(path_to_local_dir, base_timestamp, category_code)
                 self.storage.child(path_to_base_data_on_cloud).download(path=path_to_base_data, filename=path_to_base_data)
+                if not os.path.isfile(path_to_base_data):
+                    self.storage.child(path_to_base_data_on_cloud).download(filename=path_to_base_data)
                 assert os.path.isfile(path_to_base_data)
                 path_to_test_data_on_cloud = "products/{}/{}".format(test_timestamp, category_code)
                 path_to_test_data = "{}/{}_{}".format(path_to_local_dir, test_timestamp, category_code)
                 self.storage.child(path_to_test_data_on_cloud).download(path=path_to_test_data,
                                                                         filename=path_to_test_data)
+                if not os.path.isfile(path_to_test_data):
+                    self.storage.child(path_to_test_data_on_cloud).download(filename=path_to_test_data)
+
                 assert os.path.isfile(path_to_test_data)
             return path_to_local_dir
         except Exception:
