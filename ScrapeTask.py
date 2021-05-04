@@ -7,16 +7,17 @@ from Utils import supported_categories, log_info
 
 
 class ScrapeTask:
-    def __init__(self, iterations, interval_seconds=5*60, debug=False):
+    def __init__(self, iterations, interval_seconds=60, debug=False, on_proxy=False):
         self.category_codes = supported_categories()
         self.results_dict = {}
         self.iterations = iterations
         self.interval_seconds = interval_seconds
         self.debug = debug
         self.uploader = Uploader()
+        self.on_proxy = on_proxy
 
     def start(self):
-        scraper = Scraper(headless=not self.debug)
+        scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
         i = 0
         while 1:
             start_time = datetime.now()
@@ -31,10 +32,9 @@ class ScrapeTask:
             if i == self.iterations:
                 scraper.terminate()
                 break
-
             if flag != "SUCCESS":
                 scraper.terminate()
-                scraper = Scraper(headless=not self.debug)
+                scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
                 log_info("upload started")
                 self.uploader.upload_products(timestamp=scraper.timestamp)

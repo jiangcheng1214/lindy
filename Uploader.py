@@ -31,9 +31,9 @@ class Uploader:
             return False
         for category_code in self.category_codes:
             file_path = os.path.join(self.data_dir_path, timestamp, "product", category_code)
-            dest_path = 'products/{}/{}'.format(timestamp, category_code)
-            self.storage.child(dest_path).put(file_path)
-            log_info("{} has been uploaded to {}".format(file_path, dest_path))
+            file_path_on_cloud = 'products/{}/{}'.format(timestamp, category_code)
+            self.storage.child(file_path_on_cloud).put(file_path)
+            log_info("{} has been uploaded to {}".format(file_path, file_path_on_cloud))
 
         self.update_latest_timestamp(timestamp)
         return True
