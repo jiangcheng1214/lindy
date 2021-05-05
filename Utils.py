@@ -3,6 +3,8 @@ import logging
 import os
 from datetime import datetime
 from pytz import timezone, utc
+import random
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
 
@@ -35,12 +37,21 @@ def create_empty_file(dir_path, name):
         log_info('{} created!'.format(file_path))
 
 
+def wait_random(lower_bound, higher_bound):
+    assert lower_bound <= higher_bound
+    random_wait = random.uniform(lower_bound, higher_bound)
+    log_info("random_wait: {}".format(random_wait))
+    time.sleep(random_wait)
+
+
 def supported_categories():
     # return ['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS']
     return ['WOMENBAGSSMALLLEATHERGOODS']
 
+
 def get_current_pst_format_timestamp():
     return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
+
 
 def get_current_pst_time():
     return datetime.now(tz=utc).astimezone(timezone('US/Pacific'))

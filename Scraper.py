@@ -6,7 +6,7 @@ import urllib
 import random
 from fake_useragent import UserAgent
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp
+    get_current_pst_format_timestamp, wait_random
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -84,7 +84,6 @@ class Scraper:
                     '//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]')[0])
             if self.driver.find_elements_by_xpath('//div[contains(text(), "You have been blocked.")]'):
                 self.driver.switch_to.default_content()
-                create_empty_file(self.product_dir_path, "BLOCKED")
                 return True
             self.driver.switch_to.default_content()
             return False
@@ -321,17 +320,44 @@ class Scraper:
     def get_product_info(self):
 
         def get_product_info_from_category(category, retry=0):
-            block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
-            if os.path.exists(block_flag_path):
-                log_info("get_product_info_from_category blocked, skipping")
-                return False
+            # block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
+            # if os.path.exists(block_flag_path):
+            #     log_info("get_product_info_from_category blocked, skipping")
+            #     return False
             if retry == 3:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
             URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
 
-            open_success = self.open_url_and_crack_antibot(URL)
+            # workaround to simulate human behavior
+            unblocked = False
+            attempt = 0
+            while attempt < 5:
+                attempt += 1
+                self.driver.get(URL)
+                wait_random(3, 4)
+                if not self.is_blocked():
+                    unblocked = True
+                    break
+                else:
+                    self.driver.get('https://www.google.com/')
+                    wait_random(3, 4)
+
+            if not unblocked:
+                if retry == 3:
+                    create_empty_file(self.product_dir_path, "BLOCKED")
+                    return False
+                return get_product_info_from_category(category, retry + 1)
+
+            if self.is_detected_by_anti_bot():
+                if self.solve_recaptha():
+                    log_info('solve_recaptha done!')
+                    open_success = True
+                else:
+                    log_info('solve_recaptha failed!')
+                    open_success = False
+
             if not open_success:
                 return get_product_info_from_category(category, retry + 1)
             try:
@@ -357,12 +383,11 @@ class Scraper:
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
-                random_wait = random.uniform(1.5, 3)
-                log_info("random_wait: {}".format(random_wait))
-                time.sleep(random_wait)
-                if not self.open_url_and_crack_antibot(URL):
-                    log_info("open URL failed: {}".format(URL))
-                    return get_product_info_from_category(category, retry + 1)
+                # wait_random(1.5, 3)
+                # if not self.open_url_and_crack_antibot(URL):
+                #     log_info("open URL failed: {}".format(URL))
+                #     return get_product_info_from_category(category, retry + 1)
+                self.driver.get(URL)
                 try:
                     WebDriverWait(self.driver, 10).until(
                         lambda driver: driver.find_element_by_tag_name("pre").text)
@@ -389,16 +414,16 @@ class Scraper:
         self.create_timestamped_data_dir()
         # URL = constants.HERMES_PRODUCT_API.format(self.locale_code, 'WOMENBAGSSMALLLEATHERGOODS',
         #                                           constants.PRODUCT_PAGE_SIZE, 0)
-        URL = "https://www.hermes.com/us/en/"
+        # URL = "https://www.hermes.com/us/en/"
 
         # workaround to simulate human behavior
-        random_wait = random.uniform(1.5, 3)
-        log_info("random_wait: {}".format(random_wait))
-        time.sleep(random_wait)
-        self.driver.get(URL)
-        random_wait = random.uniform(1.5, 3)
-        log_info("random_wait: {}".format(random_wait))
-        time.sleep(random_wait)
+        # random_wait = random.uniform(1.5, 3)
+        # log_info("random_wait: {}".format(random_wait))
+        # time.sleep(random_wait)
+        # self.driver.get(URL)
+        # random_wait = random.uniform(1.5, 3)
+        # log_info("random_wait: {}".format(random_wait))
+        # time.sleep(random_wait)
         # self.driver.get('https://www.google.com/')
         # random_wait = random.uniform(1.5, 3)
         # log_info("random_wait: {}".format(random_wait))
