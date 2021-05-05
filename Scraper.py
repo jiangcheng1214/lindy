@@ -4,6 +4,7 @@ import re
 import time
 import urllib
 from datetime import datetime
+from pytz import timezone, utc
 import random
 from fake_useragent import UserAgent
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories
@@ -306,7 +307,7 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
-        self.timestamp = datetime.now().strftime("%Y%m%d_%H_%M_%S")
+        self.timestamp = datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
         self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.data_dir_path):
             os.makedirs(self.data_dir_path)
@@ -396,7 +397,7 @@ class Scraper:
         random_wait = random.uniform(1.5, 3)
         log_info("random_wait: {}".format(random_wait))
         time.sleep(random_wait)
-        self.driver.back()
+        self.driver.get('https://www.google.com/')
         random_wait = random.uniform(1.5, 3)
         log_info("random_wait: {}".format(random_wait))
         time.sleep(random_wait)
