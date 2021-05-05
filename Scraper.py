@@ -3,11 +3,10 @@ import os
 import re
 import time
 import urllib
-from datetime import datetime
-from pytz import timezone, utc
 import random
 from fake_useragent import UserAgent
-from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories
+from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
+    get_current_pst_format_timestamp
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -64,7 +63,8 @@ class Scraper:
             with open('credentials/proxy_config.json', 'r') as f:
                 proxy_option = json.load(f)
                 seleniumwire_options = proxy_option
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options, options=options)
+            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
+                                           options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
@@ -307,7 +307,7 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
-        self.timestamp = datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
+        self.timestamp = get_current_pst_format_timestamp()
         self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.data_dir_path):
             os.makedirs(self.data_dir_path)
@@ -387,7 +387,9 @@ class Scraper:
             return True
 
         self.create_timestamped_data_dir()
-        URL = constants.HERMES_PRODUCT_API.format(self.locale_code, 'WOMENBAGSSMALLLEATHERGOODS', constants.PRODUCT_PAGE_SIZE, 0)
+        # URL = constants.HERMES_PRODUCT_API.format(self.locale_code, 'WOMENBAGSSMALLLEATHERGOODS',
+        #                                           constants.PRODUCT_PAGE_SIZE, 0)
+        URL = "https://www.hermes.com/us/en/"
 
         # workaround to simulate human behavior
         random_wait = random.uniform(1.5, 3)
@@ -397,10 +399,10 @@ class Scraper:
         random_wait = random.uniform(1.5, 3)
         log_info("random_wait: {}".format(random_wait))
         time.sleep(random_wait)
-        self.driver.get('https://www.google.com/')
-        random_wait = random.uniform(1.5, 3)
-        log_info("random_wait: {}".format(random_wait))
-        time.sleep(random_wait)
+        # self.driver.get('https://www.google.com/')
+        # random_wait = random.uniform(1.5, 3)
+        # log_info("random_wait: {}".format(random_wait))
+        # time.sleep(random_wait)
 
         for category_code in self.category_codes:
             if get_product_info_from_category(category_code):
@@ -438,4 +440,3 @@ class Scraper:
 
     def terminate(self):
         self.driver.quit()
-

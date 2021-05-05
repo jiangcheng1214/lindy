@@ -3,7 +3,7 @@ from datetime import datetime
 
 from Scraper import Scraper
 from Uploader import Uploader
-from Utils import supported_categories, log_info
+from Utils import supported_categories, log_info, get_current_pst_time
 
 
 class ScrapeTask:
@@ -20,25 +20,25 @@ class ScrapeTask:
         scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
         i = 0
         while 1:
-            start_time = datetime.now()
+            start_time = get_current_pst_time()
             scraper.get_product_info()
             flag, results = scraper.all_set()
-            time_used_in_seconds = (datetime.now() - start_time).total_seconds()
+            time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
             if flag not in self.results_dict:
                 self.results_dict[flag] = 0
             self.results_dict[flag] += 1
             log_info("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, results]))
             i += 1
-            if i == self.iterations:
-                scraper.terminate()
-                break
             if flag != "SUCCESS":
                 scraper.terminate()
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
                 log_info("upload started")
                 self.uploader.upload_products(timestamp=scraper.timestamp)
-
+            if i == self.iterations:
+                scraper.terminate()
+                break
+            if flag == "SUCCESS":
                 time_until_next_scrape = self.interval_seconds - time_used_in_seconds
                 log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
                 if time_until_next_scrape > 0:

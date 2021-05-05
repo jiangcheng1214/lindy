@@ -1,6 +1,8 @@
 import inspect
 import logging
 import os
+from datetime import datetime
+from pytz import timezone, utc
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
 
@@ -36,3 +38,9 @@ def create_empty_file(dir_path, name):
 def supported_categories():
     # return ['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS']
     return ['WOMENBAGSSMALLLEATHERGOODS']
+
+def get_current_pst_format_timestamp():
+    return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
+
+def get_current_pst_time():
+    return datetime.now(tz=utc).astimezone(timezone('US/Pacific'))
