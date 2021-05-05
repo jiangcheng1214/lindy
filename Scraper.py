@@ -357,6 +357,8 @@ class Scraper:
                 else:
                     log_info('solve_recaptha failed!')
                     open_success = False
+            else:
+                open_success = True
 
             if not open_success:
                 return get_product_info_from_category(category, retry + 1)
