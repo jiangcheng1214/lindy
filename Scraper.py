@@ -320,10 +320,6 @@ class Scraper:
     def get_product_info(self):
 
         def get_product_info_from_category(category, retry=0):
-            # block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
-            # if os.path.exists(block_flag_path):
-            #     log_info("get_product_info_from_category blocked, skipping")
-            #     return False
             if retry == 3:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
@@ -382,31 +378,33 @@ class Scraper:
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
                 self.driver.execute_script("window.open('{}');".format(URL))
-            # while response_json['total'] > 0:
-            #     products = response_json['products']['items']
-            #     log_info('current product list count = {}'.format(len(products)))
-            #     for p in products:
-            #         results.append(p)
-            #     offset += constants.PRODUCT_PAGE_SIZE
-            #     URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
-            #                                               constants.PRODUCT_PAGE_SIZE,
-            #                                               offset)
-            #     # wait_random(1.5, 3)
-            #     # if not self.open_url_and_crack_antibot(URL):
-            #     #     log_info("open URL failed: {}".format(URL))
-            #     #     return get_product_info_from_category(category, retry + 1)
-            #     self.driver.get(URL)
-            #     try:
-            #         WebDriverWait(self.driver, 10).until(
-            #             lambda driver: driver.find_element_by_tag_name("pre").text)
-            #         time.sleep(random.uniform(0.2, 0.3))
-            #         response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
-            #         if 'total' not in response_json:
-            #             log_exception("total is not a field of: {}".format(response_json))
-            #             return get_product_info_from_category(category, retry + 1)
-            #     except Exception:
-            #         log_exception("load json failed: {}".format(URL))
-            #         return get_product_info_from_category(category, retry + 1)
+            '''
+            while response_json['total'] > 0:
+                products = response_json['products']['items']
+                log_info('current product list count = {}'.format(len(products)))
+                for p in products:
+                    results.append(p)
+                offset += constants.PRODUCT_PAGE_SIZE
+                URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
+                                                          constants.PRODUCT_PAGE_SIZE,
+                                                          offset)
+                # wait_random(1.5, 3)
+                # if not self.open_url_and_crack_antibot(URL):
+                #     log_info("open URL failed: {}".format(URL))
+                #     return get_product_info_from_category(category, retry + 1)
+                self.driver.get(URL)
+                try:
+                    WebDriverWait(self.driver, 10).until(
+                        lambda driver: driver.find_element_by_tag_name("pre").text)
+                    time.sleep(random.uniform(0.2, 0.3))
+                    response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
+                    if 'total' not in response_json:
+                        log_exception("total is not a field of: {}".format(response_json))
+                        return get_product_info_from_category(category, retry + 1)
+                except Exception:
+                    log_exception("load json failed: {}".format(URL))
+                    return get_product_info_from_category(category, retry + 1)
+            '''
             wait_random(5, 6)
             for window_handler_id in self.driver.window_handles:
                 self.driver.switch_to.window(window_handler_id)
@@ -435,23 +433,6 @@ class Scraper:
             return True
 
         self.create_timestamped_data_dir()
-        # URL = constants.HERMES_PRODUCT_API.format(self.locale_code, 'WOMENBAGSSMALLLEATHERGOODS',
-        #                                           constants.PRODUCT_PAGE_SIZE, 0)
-        # URL = "https://www.hermes.com/us/en/"
-
-        # workaround to simulate human behavior
-        # random_wait = random.uniform(1.5, 3)
-        # log_info("random_wait: {}".format(random_wait))
-        # time.sleep(random_wait)
-        # self.driver.get(URL)
-        # random_wait = random.uniform(1.5, 3)
-        # log_info("random_wait: {}".format(random_wait))
-        # time.sleep(random_wait)
-        # self.driver.get('https://www.google.com/')
-        # random_wait = random.uniform(1.5, 3)
-        # log_info("random_wait: {}".format(random_wait))
-        # time.sleep(random_wait)
-
         for category_code in self.category_codes:
             if get_product_info_from_category(category_code):
                 create_empty_file(self.product_dir_path, "SUCCESS_{}".format(category_code))
