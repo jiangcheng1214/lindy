@@ -55,3 +55,12 @@ def get_current_pst_format_timestamp():
 
 def get_current_pst_time():
     return datetime.now(tz=utc).astimezone(timezone('US/Pacific'))
+
+
+def close_all_other_tabs(driver):
+    cur = driver.current_window_handle
+    for handle in driver.window_handles:
+        driver.switch_to.window(handle)
+        if handle != cur:
+            driver.close()
+    driver.switch_to.window(cur)

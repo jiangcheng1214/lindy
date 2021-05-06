@@ -6,7 +6,7 @@ import urllib
 import random
 from fake_useragent import UserAgent
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp, wait_random
+    get_current_pst_format_timestamp, wait_random, close_all_other_tabs
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -417,14 +417,11 @@ class Scraper:
                     for p in products:
                         results.append(p)
                 except Exception:
-                    while len(self.driver.window_handles) > 1:
-                        self.driver.close()
-                    self.driver.switch_to.window(self.driver.window_handles[0])
+                    close_all_other_tabs(self.driver)
                     log_exception("load json failed: {}".format(URL))
                     return get_product_info_from_category(category, retry + 1)
-            while len(self.driver.window_handles) > 1:
-                self.driver.close()
-            self.driver.switch_to.window(self.driver.window_handles[0])
+
+            close_all_other_tabs(self.driver)
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
