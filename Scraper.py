@@ -155,7 +155,7 @@ class Scraper:
             self.type_with_delay('//input[@class="geetest_input"]', numeric_string)
             self.driver.find_element_by_xpath('//input[@class="geetest_input"]').send_keys(Keys.ENTER)
             try:
-                WebDriverWait(self.driver, 10).until(
+                WebDriverWait(self.driver, 20).until(
                     expected_conditions.invisibility_of_element_located((By.XPATH, '//div[@class="geetest_replay"]')))
             except Exception:
                 log_warning('recapcha solving failed!')
