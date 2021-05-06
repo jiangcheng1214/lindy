@@ -34,7 +34,7 @@ class ScrapeTask:
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
                 log_info("upload started")
-                self.uploader.upload_products(timestamp=scraper.timestamp)
+                self.uploader.upload_products_if_necessary(timestamp=scraper.timestamp)
             if i == self.iterations:
                 scraper.terminate()
                 break

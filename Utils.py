@@ -1,6 +1,7 @@
 import inspect
 import logging
 import os
+import shutil
 from datetime import datetime
 from pytz import timezone, utc
 import random
@@ -64,3 +65,9 @@ def close_all_other_tabs(driver):
         if handle != cur:
             driver.close()
     driver.switch_to.window(cur)
+
+
+def delete_dir(path):
+    if os.path.exists(path) and os.path.isdir(path):
+        log_info("removing dir: {}".format(path))
+        shutil.rmtree(path)

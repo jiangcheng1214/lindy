@@ -6,7 +6,7 @@ import urllib
 import random
 from fake_useragent import UserAgent
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp, wait_random, close_all_other_tabs
+    get_current_pst_format_timestamp, wait_random, close_all_other_tabs, delete_dir
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -306,6 +306,11 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
+
+        dirs_to_cleanup = [os.path.join(os.getcwd(), 'data/scraper'), os.path.join(os.getcwd(), 'temp/scraper')]
+        for dir in dirs_to_cleanup:
+            delete_dir(dir)
+
         self.timestamp = get_current_pst_format_timestamp()
         self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.data_dir_path):

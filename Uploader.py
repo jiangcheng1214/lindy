@@ -25,7 +25,7 @@ class Uploader:
     def update_latest_timestamp(self, timestamp):
         self.database.child('latest_timestamp').set(timestamp)
 
-    def upload_products(self, timestamp):
+    def upload_products_if_necessary(self, timestamp):
         if not self.is_scrape_success(timestamp):
             log_warning("Not a success scrape with timestamp " + timestamp)
             return False
