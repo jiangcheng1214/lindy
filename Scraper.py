@@ -374,33 +374,57 @@ class Scraper:
                 log_info("invalid response_json: {}".format(response_json))
                 return get_product_info_from_category(category, retry + 1)
             log_info('total product count = {}'.format(total))
-            offset = 0
             results = []
-            while response_json['total'] > 0:
-                products = response_json['products']['items']
-                log_info('current product list count = {}'.format(len(products)))
-                for p in products:
-                    results.append(p)
-                offset += constants.PRODUCT_PAGE_SIZE
+            num_of_extra_tab_needed = int((total-1)/constants.PRODUCT_PAGE_SIZE)
+            for i in range(num_of_extra_tab_needed):
+                offset = (i+1) * constants.PRODUCT_PAGE_SIZE
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
-                # wait_random(1.5, 3)
-                # if not self.open_url_and_crack_antibot(URL):
-                #     log_info("open URL failed: {}".format(URL))
-                #     return get_product_info_from_category(category, retry + 1)
-                self.driver.get(URL)
+                self.driver.execute_script("window.open('{}');".format(URL))
+            # while response_json['total'] > 0:
+            #     products = response_json['products']['items']
+            #     log_info('current product list count = {}'.format(len(products)))
+            #     for p in products:
+            #         results.append(p)
+            #     offset += constants.PRODUCT_PAGE_SIZE
+            #     URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
+            #                                               constants.PRODUCT_PAGE_SIZE,
+            #                                               offset)
+            #     # wait_random(1.5, 3)
+            #     # if not self.open_url_and_crack_antibot(URL):
+            #     #     log_info("open URL failed: {}".format(URL))
+            #     #     return get_product_info_from_category(category, retry + 1)
+            #     self.driver.get(URL)
+            #     try:
+            #         WebDriverWait(self.driver, 10).until(
+            #             lambda driver: driver.find_element_by_tag_name("pre").text)
+            #         time.sleep(random.uniform(0.2, 0.3))
+            #         response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
+            #         if 'total' not in response_json:
+            #             log_exception("total is not a field of: {}".format(response_json))
+            #             return get_product_info_from_category(category, retry + 1)
+            #     except Exception:
+            #         log_exception("load json failed: {}".format(URL))
+            #         return get_product_info_from_category(category, retry + 1)
+            wait_random(5, 6)
+            for window_handler_id in self.driver.window_handles:
+                self.driver.switch_to.window(window_handler_id)
                 try:
-                    WebDriverWait(self.driver, 10).until(
-                        lambda driver: driver.find_element_by_tag_name("pre").text)
-                    time.sleep(random.uniform(0.2, 0.3))
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
-                    if 'total' not in response_json:
-                        log_exception("total is not a field of: {}".format(response_json))
-                        return get_product_info_from_category(category, retry + 1)
+                    products = response_json['products']['items']
+                    log_info('current product list count = {}'.format(len(products)))
+                    for p in products:
+                        results.append(p)
                 except Exception:
+                    while len(self.driver.window_handles) > 1:
+                        self.driver.close()
+                    self.driver.switch_to.window(self.driver.window_handles[0])
                     log_exception("load json failed: {}".format(URL))
                     return get_product_info_from_category(category, retry + 1)
+            while len(self.driver.window_handles) > 1:
+                self.driver.close()
+            self.driver.switch_to.window(self.driver.window_handles[0])
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
