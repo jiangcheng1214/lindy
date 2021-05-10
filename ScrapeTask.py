@@ -1,5 +1,4 @@
 import time
-from datetime import datetime
 
 from Scraper import Scraper
 from Uploader import Uploader
