@@ -58,6 +58,10 @@ class Scraper:
             options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-gpu')
+
+        # avoid being detected
+        options.add_argument('--disable-blink-features=AutomationControlled')
+
         # setup proxy
         if on_proxy:
             with open('credentials/proxy_config.json', 'r') as f:
