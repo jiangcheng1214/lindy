@@ -3,10 +3,10 @@ import os
 import re
 import time
 import urllib
-from datetime import datetime
 import random
 from fake_useragent import UserAgent
-from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories
+from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
+    get_current_pst_format_timestamp, wait_random, close_all_other_tabs, delete_dir
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -58,12 +58,17 @@ class Scraper:
             options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-gpu')
+
+        # avoid being detected
+        options.add_argument('--disable-blink-features=AutomationControlled')
+
         # setup proxy
         if on_proxy:
             with open('credentials/proxy_config.json', 'r') as f:
                 proxy_option = json.load(f)
                 seleniumwire_options = proxy_option
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options, options=options)
+            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
+                                           options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
@@ -83,7 +88,6 @@ class Scraper:
                     '//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]')[0])
             if self.driver.find_elements_by_xpath('//div[contains(text(), "You have been blocked.")]'):
                 self.driver.switch_to.default_content()
-                create_empty_file(self.product_dir_path, "BLOCKED")
                 return True
             self.driver.switch_to.default_content()
             return False
@@ -155,7 +159,7 @@ class Scraper:
             self.type_with_delay('//input[@class="geetest_input"]', numeric_string)
             self.driver.find_element_by_xpath('//input[@class="geetest_input"]').send_keys(Keys.ENTER)
             try:
-                WebDriverWait(self.driver, 10).until(
+                WebDriverWait(self.driver, 20).until(
                     expected_conditions.invisibility_of_element_located((By.XPATH, '//div[@class="geetest_replay"]')))
             except Exception:
                 log_warning('recapcha solving failed!')
@@ -306,7 +310,12 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
-        self.timestamp = datetime.now().strftime("%Y%m%d_%H_%M_%S")
+
+        dirs_to_cleanup = [os.path.join(os.getcwd(), 'data/scraper'), os.path.join(os.getcwd(), 'temp/scraper')]
+        for dir in dirs_to_cleanup:
+            delete_dir(dir)
+
+        self.timestamp = get_current_pst_format_timestamp()
         self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.data_dir_path):
             os.makedirs(self.data_dir_path)
@@ -320,17 +329,42 @@ class Scraper:
     def get_product_info(self):
 
         def get_product_info_from_category(category, retry=0):
-            block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
-            if os.path.exists(block_flag_path):
-                log_info("get_product_info_from_category blocked, skipping")
-                return False
             if retry == 3:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
             URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
 
-            open_success = self.open_url_and_crack_antibot(URL)
+            # workaround to simulate human behavior
+            unblocked = False
+            attempt = 0
+            while attempt < 5:
+                attempt += 1
+                self.driver.get(URL)
+                wait_random(3, 4)
+                if not self.is_blocked():
+                    unblocked = True
+                    break
+                else:
+                    self.driver.get('https://www.google.com/')
+                    wait_random(3, 4)
+
+            if not unblocked:
+                if retry == 3:
+                    create_empty_file(self.product_dir_path, "BLOCKED")
+                    return False
+                return get_product_info_from_category(category, retry + 1)
+
+            if self.is_detected_by_anti_bot():
+                if self.solve_recaptha():
+                    log_info('solve_recaptha done!')
+                    open_success = True
+                else:
+                    log_info('solve_recaptha failed!')
+                    open_success = False
+            else:
+                open_success = True
+
             if not open_success:
                 return get_product_info_from_category(category, retry + 1)
             try:
@@ -345,8 +379,15 @@ class Scraper:
                 log_info("invalid response_json: {}".format(response_json))
                 return get_product_info_from_category(category, retry + 1)
             log_info('total product count = {}'.format(total))
-            offset = 0
             results = []
+            num_of_extra_tab_needed = int((total-1)/constants.PRODUCT_PAGE_SIZE)
+            for i in range(num_of_extra_tab_needed):
+                offset = (i+1) * constants.PRODUCT_PAGE_SIZE
+                URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
+                                                          constants.PRODUCT_PAGE_SIZE,
+                                                          offset)
+                self.driver.execute_script("window.open('{}');".format(URL))
+            '''
             while response_json['total'] > 0:
                 products = response_json['products']['items']
                 log_info('current product list count = {}'.format(len(products)))
@@ -356,12 +397,11 @@ class Scraper:
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
-                random_wait = random.uniform(1.5, 3)
-                log_info("random_wait: {}".format(random_wait))
-                time.sleep(random_wait)
-                if not self.open_url_and_crack_antibot(URL):
-                    log_info("open URL failed: {}".format(URL))
-                    return get_product_info_from_category(category, retry + 1)
+                # wait_random(1.5, 3)
+                # if not self.open_url_and_crack_antibot(URL):
+                #     log_info("open URL failed: {}".format(URL))
+                #     return get_product_info_from_category(category, retry + 1)
+                self.driver.get(URL)
                 try:
                     WebDriverWait(self.driver, 10).until(
                         lambda driver: driver.find_element_by_tag_name("pre").text)
@@ -373,6 +413,22 @@ class Scraper:
                 except Exception:
                     log_exception("load json failed: {}".format(URL))
                     return get_product_info_from_category(category, retry + 1)
+            '''
+            wait_random(5, 6)
+            for window_handler_id in self.driver.window_handles:
+                self.driver.switch_to.window(window_handler_id)
+                try:
+                    response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
+                    products = response_json['products']['items']
+                    log_info('current product list count = {}'.format(len(products)))
+                    for p in products:
+                        results.append(p)
+                except Exception:
+                    close_all_other_tabs(self.driver)
+                    log_exception("load json failed: {}".format(URL))
+                    return get_product_info_from_category(category, retry + 1)
+
+            close_all_other_tabs(self.driver)
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
@@ -386,21 +442,6 @@ class Scraper:
             return True
 
         self.create_timestamped_data_dir()
-        URL = constants.HERMES_PRODUCT_API.format(self.locale_code, 'WOMENBAGSSMALLLEATHERGOODS', constants.PRODUCT_PAGE_SIZE, 0)
-
-        # workaround to simulate human behavior
-        random_wait = random.uniform(1.5, 3)
-        log_info("random_wait: {}".format(random_wait))
-        time.sleep(random_wait)
-        self.driver.get(URL)
-        random_wait = random.uniform(1.5, 3)
-        log_info("random_wait: {}".format(random_wait))
-        time.sleep(random_wait)
-        self.driver.back()
-        random_wait = random.uniform(1.5, 3)
-        log_info("random_wait: {}".format(random_wait))
-        time.sleep(random_wait)
-
         for category_code in self.category_codes:
             if get_product_info_from_category(category_code):
                 create_empty_file(self.product_dir_path, "SUCCESS_{}".format(category_code))
@@ -437,4 +478,3 @@ class Scraper:
 
     def terminate(self):
         self.driver.quit()
-
