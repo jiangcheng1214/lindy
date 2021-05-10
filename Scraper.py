@@ -310,19 +310,13 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
-
-        dirs_to_cleanup = [os.path.join(os.getcwd(), 'data/scraper'), os.path.join(os.getcwd(), 'temp/scraper')]
-        for dir in dirs_to_cleanup:
-            delete_dir(dir)
+        delete_dir(os.path.join(os.getcwd(), 'temp/scraper'))
 
         self.timestamp = get_current_pst_format_timestamp()
-        self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
-        if not os.path.isdir(self.data_dir_path):
-            os.makedirs(self.data_dir_path)
         self.temp_dir_path = os.path.join(os.getcwd(), 'temp/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.temp_dir_path):
             os.makedirs(self.temp_dir_path)
-        self.product_dir_path = os.path.join(self.data_dir_path, 'product')
+        self.product_dir_path = os.path.join(self.temp_dir_path, 'product')
         if not os.path.exists(self.product_dir_path):
             os.makedirs(self.product_dir_path)
 

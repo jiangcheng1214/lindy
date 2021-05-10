@@ -1,7 +1,7 @@
 import time
 
+from DeltaChecker import DeltaChecker
 from Scraper import Scraper
-from Uploader import Uploader
 from Utils import supported_categories, log_info, get_current_pst_time
 
 
@@ -12,7 +12,7 @@ class ScrapeTask:
         self.iterations = iterations
         self.interval_seconds = interval_seconds
         self.debug = debug
-        self.uploader = Uploader()
+        self.deltaChecker = DeltaChecker()
         self.on_proxy = on_proxy
 
     def start(self):
@@ -32,8 +32,9 @@ class ScrapeTask:
                 scraper.terminate()
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
-                log_info("upload started")
-                self.uploader.upload_products_if_necessary(timestamp=scraper.timestamp)
+                log_info("upload attempt started")
+                uploaded = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
+                log_info("upload result: {}".format(uploaded))
             if i == self.iterations:
                 scraper.terminate()
                 break
