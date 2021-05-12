@@ -38,7 +38,6 @@ class ScrapeTask:
             if i == self.iterations:
                 scraper.terminate()
                 break
-            # if flag == "SUCCESS":
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
             log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
             if time_until_next_scrape > 0:
