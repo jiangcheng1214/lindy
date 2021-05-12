@@ -38,10 +38,10 @@ class ScrapeTask:
             if i == self.iterations:
                 scraper.terminate()
                 break
-            if flag == "SUCCESS":
-                time_until_next_scrape = self.interval_seconds - time_used_in_seconds
-                log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
-                if time_until_next_scrape > 0:
-                    time.sleep(time_until_next_scrape)
+            # if flag == "SUCCESS":
+            time_until_next_scrape = self.interval_seconds - time_used_in_seconds
+            log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
+            if time_until_next_scrape > 0:
+                time.sleep(time_until_next_scrape)
 
         log_info(self.results_dict)
