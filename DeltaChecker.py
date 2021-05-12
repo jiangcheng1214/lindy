@@ -204,6 +204,7 @@ class DeltaChecker:
                 if not os.path.exists(local_latest_file_path):
                     cloud_latest_file_path = "products/{}/{}".format(latest_timestamp, category_code)
                     self.download(cloud_latest_file_path, local_latest_file_path)
+                    assert os.path.exists(local_latest_file_path)
                 if not is_identical(local_latest_file_path, local_test_file_path):
                     should_upload = True
                     break

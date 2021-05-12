@@ -7,7 +7,29 @@ from pytz import timezone, utc
 import random
 import time
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+def get_current_pst_format_timestamp():
+    return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
+
+
+def get_current_pst_time():
+    return datetime.now(tz=utc).astimezone(timezone('US/Pacific'))
+
+
+def create_empty_file(dir_path, name):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    file_path = os.path.join(dir_path, name)
+    with open(file_path, 'w+'):
+        print('{} created!'.format(file_path))
+
+
+ts = get_current_pst_format_timestamp()
+create_empty_file("logs/", "{}.log".format(ts))
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s', handlers=[
+    logging.FileHandler("logs/{}.log".format(ts)),
+    logging.StreamHandler()
+])
 
 
 def log_info(s):
@@ -30,14 +52,6 @@ def log_warning(s):
     logging.warning(msg)
 
 
-def create_empty_file(dir_path, name):
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    file_path = os.path.join(dir_path, name)
-    with open(file_path, 'w+'):
-        log_info('{} created!'.format(file_path))
-
-
 def wait_random(lower_bound, higher_bound):
     assert lower_bound <= higher_bound
     random_wait = random.uniform(lower_bound, higher_bound)
@@ -48,14 +62,6 @@ def wait_random(lower_bound, higher_bound):
 def supported_categories():
     # return ['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS']
     return ['WOMENBAGSSMALLLEATHERGOODS']
-
-
-def get_current_pst_format_timestamp():
-    return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
-
-
-def get_current_pst_time():
-    return datetime.now(tz=utc).astimezone(timezone('US/Pacific'))
 
 
 def close_all_other_tabs(driver):
