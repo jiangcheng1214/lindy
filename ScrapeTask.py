@@ -32,9 +32,12 @@ class ScrapeTask:
                 scraper.terminate()
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
-                log_info("upload attempt started")
-                uploaded = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
-                log_info("upload result: {}".format(uploaded))
+                log_info("update products info attempt started")
+                products_updated = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
+                log_info("updated product? : {}".format(products_updated))
+                log_info("delta update attempt started")
+                delta_updated = self.deltaChecker.check_delta_and_update_cloud()
+                log_info("delta updated? : {}".format(delta_updated))
             if i == self.iterations:
                 scraper.terminate()
                 break
