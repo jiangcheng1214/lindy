@@ -310,19 +310,13 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
-
-        dirs_to_cleanup = [os.path.join(os.getcwd(), 'data/scraper'), os.path.join(os.getcwd(), 'temp/scraper')]
-        for dir in dirs_to_cleanup:
-            delete_dir(dir)
+        delete_dir(os.path.join(os.getcwd(), 'temp/scraper'))
 
         self.timestamp = get_current_pst_format_timestamp()
-        self.data_dir_path = os.path.join(os.getcwd(), 'data/scraper/{}'.format(self.timestamp))
-        if not os.path.isdir(self.data_dir_path):
-            os.makedirs(self.data_dir_path)
         self.temp_dir_path = os.path.join(os.getcwd(), 'temp/scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.temp_dir_path):
             os.makedirs(self.temp_dir_path)
-        self.product_dir_path = os.path.join(self.data_dir_path, 'product')
+        self.product_dir_path = os.path.join(self.temp_dir_path, 'product')
         if not os.path.exists(self.product_dir_path):
             os.makedirs(self.product_dir_path)
 
@@ -336,24 +330,23 @@ class Scraper:
             URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
 
             # workaround to simulate human behavior
-            unblocked = False
+            blocked = True
             attempt = 0
             while attempt < 5:
                 attempt += 1
                 self.driver.get(URL)
                 wait_random(3, 4)
                 if not self.is_blocked():
-                    unblocked = True
+                    blocked = False
                     break
                 else:
                     self.driver.get('https://www.google.com/')
                     wait_random(3, 4)
 
-            if not unblocked:
-                if retry == 3:
-                    create_empty_file(self.product_dir_path, "BLOCKED")
-                    return False
-                return get_product_info_from_category(category, retry + 1)
+            if blocked:
+                log_warning("after {} attempts, still being BLOCKED!".format(attempt))
+                create_empty_file(self.product_dir_path, "BLOCKED")
+                return False
 
             if self.is_detected_by_anti_bot():
                 if self.solve_recaptha():
