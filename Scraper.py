@@ -443,7 +443,7 @@ class Scraper:
             else:
                 create_empty_file(self.product_dir_path, "FAIL_{}".format(category_code))
 
-    def all_set(self):
+    def scrape_result(self):
         results = {}
         if not self.timestamp:
             return "NOT_READY", results

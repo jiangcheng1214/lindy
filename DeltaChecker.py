@@ -79,12 +79,12 @@ class DeltaChecker:
         log_info("checking delta base_timestamp: {} latest_timestamp: {}".format(base_timestamp, latest_timestamp))
         if base_timestamp == latest_timestamp:
             log_info("skip delta check (base_timestamp equals to latest_timestamp)")
-            return False
+            return "SKIP"
         assert base_timestamp < latest_timestamp
         data_dir_path = self.download_data_for_delta_check(base_timestamp, latest_timestamp)
         if not data_dir_path:
             log_warning("skip delta check (data download failed)")
-            return False
+            return "DOWNLOAD_FAIL"
         all_base_data = {}
         all_test_data = {}
         all_ids = set()
@@ -124,37 +124,41 @@ class DeltaChecker:
 
         if len(added_items) + len(removed_items) + len(updated_items) == 0:
             log_info("no added/removed/updated items detected from {} to {}".format(base_timestamp, latest_timestamp))
-            return False
+            return "SKIP"
 
         path_to_delta_dir_on_cloud = "delta/{}_to_{}/".format(base_timestamp, latest_timestamp)
-        if added_items:
-            path_to_delta_added_data = os.path.join(data_dir_path, "ADDED")
-            dump_jsons_to_file(added_items, path_to_delta_added_data)
-            path_to_delta_added_data_on_cloud = path_to_delta_dir_on_cloud + "ADDED"
-            self.storage.child(path_to_delta_added_data_on_cloud).put(path_to_delta_added_data)
-            log_info("added items record uploaded to {}".format(path_to_delta_added_data_on_cloud))
+        try:
+            if added_items:
+                path_to_delta_added_data = os.path.join(data_dir_path, "ADDED")
+                dump_jsons_to_file(added_items, path_to_delta_added_data)
+                path_to_delta_added_data_on_cloud = path_to_delta_dir_on_cloud + "ADDED"
+                self.storage.child(path_to_delta_added_data_on_cloud).put(path_to_delta_added_data)
+                log_info("added items record uploaded to {}".format(path_to_delta_added_data_on_cloud))
 
-        if removed_items:
-            path_to_delta_removed_data = os.path.join(data_dir_path, "REMOVED")
-            dump_jsons_to_file(removed_items, path_to_delta_removed_data)
-            path_to_delta_removed_data_on_cloud = path_to_delta_dir_on_cloud + "REMOVED"
-            self.storage.child(path_to_delta_removed_data_on_cloud).put(path_to_delta_removed_data)
-            log_info("removed items record uploaded to {}".format(path_to_delta_removed_data_on_cloud))
-        else:
-            log_info("no removed items detected")
+            if removed_items:
+                path_to_delta_removed_data = os.path.join(data_dir_path, "REMOVED")
+                dump_jsons_to_file(removed_items, path_to_delta_removed_data)
+                path_to_delta_removed_data_on_cloud = path_to_delta_dir_on_cloud + "REMOVED"
+                self.storage.child(path_to_delta_removed_data_on_cloud).put(path_to_delta_removed_data)
+                log_info("removed items record uploaded to {}".format(path_to_delta_removed_data_on_cloud))
+            else:
+                log_info("no removed items detected")
 
-        if updated_items:
-            path_to_delta_updated_data = os.path.join(data_dir_path, "UPDATED")
-            dump_jsons_to_file(updated_items, path_to_delta_updated_data)
-            path_to_delta_updated_data_on_cloud = path_to_delta_dir_on_cloud + "UPDATED"
-            self.storage.child(path_to_delta_updated_data_on_cloud).put(path_to_delta_updated_data)
-            log_info("updated items record uploaded to {}".format(path_to_delta_updated_data_on_cloud))
-        else:
-            log_info("no updated items detected")
+            if updated_items:
+                path_to_delta_updated_data = os.path.join(data_dir_path, "UPDATED")
+                dump_jsons_to_file(updated_items, path_to_delta_updated_data)
+                path_to_delta_updated_data_on_cloud = path_to_delta_dir_on_cloud + "UPDATED"
+                self.storage.child(path_to_delta_updated_data_on_cloud).put(path_to_delta_updated_data)
+                log_info("updated items record uploaded to {}".format(path_to_delta_updated_data_on_cloud))
+            else:
+                log_info("no updated items detected")
+        except Exception:
+            log_exception("Exception during uploading")
+            return "UPLOAD_FAIL"
 
         # update latest timestamp after uploading delta record
         self.update_base_timestamp(latest_timestamp)
-        return True
+        return "SUCCESS"
 
     def is_scrape_success(self, timestamp):
         for category_code in supported_categories():
@@ -188,11 +192,11 @@ class DeltaChecker:
 
         if not self.is_scrape_success(timestamp):
             log_warning("Not a success scrape with timestamp " + timestamp)
-            return False
+            return "INVALID_DATA_FAIL"
         latest_timestamp = self.get_latest_timestamp()
         if timestamp <= latest_timestamp:
             log_warning("skip delta check (invalid timestamp: {} <= {})".format(timestamp, latest_timestamp))
-            return False
+            return "SKIP"
         latest_data_dir_path = os.path.join(self.latest_data_dir_path, latest_timestamp)
         if not os.path.isdir(latest_data_dir_path):
             os.makedirs(latest_data_dir_path)
@@ -211,10 +215,10 @@ class DeltaChecker:
                     break
         except Exception:
             log_exception("Exception during checking should upload or not")
-            return False
+            return "CHECK_DIFF_FAIL"
         if not should_upload:
             log_info("Don't need to upload {}, latest: {}".format(timestamp,latest_timestamp))
-            return False
+            return "SKIP"
         try:
             for category_code in supported_categories():
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
@@ -224,8 +228,8 @@ class DeltaChecker:
                 self.update_latest_timestamp(timestamp)
         except Exception:
             log_exception("Exception during uploading {} to {}".format(local_test_file_path, cloud_local_test_file_path))
-            return False
-        return True
+            return "UPLOAD_FAIL"
+        return "SUCCESS"
 
 # deltaChecker = DeltaChecker()
 # deltaChecker.upload_products_if_necessary("20210512_22_35_35")
