@@ -214,7 +214,7 @@ class DeltaChecker:
             return False
         if not should_upload:
             log_info("Don't need to upload {}, latest: {}".format(timestamp,latest_timestamp))
-            return True
+            return False
         try:
             for category_code in supported_categories():
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
