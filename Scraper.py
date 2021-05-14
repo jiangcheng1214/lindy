@@ -61,6 +61,7 @@ class Scraper:
 
         # avoid being detected
         options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
         # setup proxy
         if on_proxy:
