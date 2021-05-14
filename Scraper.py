@@ -375,6 +375,7 @@ class Scraper:
             results = []
             num_of_extra_tab_needed = int((total-1)/constants.PRODUCT_PAGE_SIZE)
             for i in range(num_of_extra_tab_needed):
+                wait_random(2, 3)
                 offset = (i+1) * constants.PRODUCT_PAGE_SIZE
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
@@ -409,6 +410,7 @@ class Scraper:
             '''
             wait_random(5, 6)
             for window_handler_id in self.driver.window_handles:
+                wait_random(1, 1.5)
                 self.driver.switch_to.window(window_handler_id)
                 try:
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
