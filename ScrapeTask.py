@@ -32,7 +32,7 @@ class ScrapeTask:
             scraper.get_product_info()
             last_flag = flag
             flag, results = scraper.scrape_result()
-            database_path_prefix = 'task_log/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])
+            database_path_prefix = 'logs/task/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])
             self.database.child('{}/scrape'.format(database_path_prefix)).set(flag)
             if flag not in self.results_dict:
                 self.results_dict[flag] = 0
@@ -41,12 +41,12 @@ class ScrapeTask:
             delta_update_result = False
             if flag != "SUCCESS":
                 if last_flag != "BLOCKED" and flag == "BLOCKED":
-                    self.database.child('key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(flag)
+                    self.database.child('logs/key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(flag)
                 scraper.terminate()
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
                 if not last_flag:
-                    self.database.child('key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(flag)
+                    self.database.child('logs/key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(flag)
                 log_info("update products info attempt started")
                 products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
                 log_info("updated product? : {}".format(products_upload_result))
