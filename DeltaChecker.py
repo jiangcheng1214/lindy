@@ -21,11 +21,11 @@ class DeltaChecker:
         self.scraped_data_dir_path = os.path.join(os.getcwd(), 'temp', 'scraper')
         self.forward_data_dir_path = os.path.join(os.getcwd(), 'temp', 'forward')
 
-    def get_timestamp_forward(self):
-        return self.database.child('timestamp_forward').get().val()
+    def get_timestamp_scraped_forward(self):
+        return self.database.child('timestamp_scraped_forward').get().val()
 
-    def update_timestamp_forward(self, timestamp):
-        self.database.child('timestamp_forward').set(timestamp)
+    def update_timestamp_scraped_forward(self, timestamp):
+        self.database.child('timestamp_scraped_forward').set(timestamp)
 
     def download(self, cloud_path, local_path):
         try:
@@ -120,7 +120,7 @@ class DeltaChecker:
         for category in supported_categories():
             delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward)
             if not delta_info:
-                log_info("no delta info founded")
+                log_info("no delta info found")
                 check_delta_results[category] = "SKIP"
                 continue
             if len(delta_info["ADDED"]) + len(delta_info["REMOVED"]) + len(delta_info["UPDATED"]) == 0:
@@ -181,7 +181,7 @@ class DeltaChecker:
         for category in supported_categories():
             delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward)
             if not delta_info:
-                log_info("no delta info founded")
+                log_info("no delta info found")
                 check_delta_results[category] = "SKIP"
                 continue
             if len(delta_info["ADDED"]) + len(delta_info["REMOVED"]) + len(delta_info["UPDATED"]) == 0:
@@ -252,11 +252,11 @@ class DeltaChecker:
         if not self.is_scrape_success(timestamp):
             log_warning("Not a success scrape with timestamp " + timestamp)
             return "INVALID_DATA_FAIL"
-        timestamp_forward = self.get_timestamp_forward()
-        if timestamp <= timestamp_forward:
-            log_warning("skip delta check (invalid timestamp: {} <= {})".format(timestamp, timestamp_forward))
+        timestamp_scraped_forward = self.get_timestamp_scraped_forward()
+        if timestamp <= timestamp_scraped_forward:
+            log_warning("skip delta check (invalid timestamp: {} <= {})".format(timestamp, timestamp_scraped_forward))
             return "SKIP"
-        forward_data_dir_path = os.path.join(self.forward_data_dir_path, timestamp_forward)
+        forward_data_dir_path = os.path.join(self.forward_data_dir_path, timestamp_scraped_forward)
         if not os.path.isdir(forward_data_dir_path):
             os.makedirs(forward_data_dir_path)
         test_data_dir_path = os.path.join(self.scraped_data_dir_path, timestamp, "product")
@@ -266,9 +266,12 @@ class DeltaChecker:
                 local_forward_file_path = os.path.join(forward_data_dir_path, category_code)
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
                 if not os.path.exists(local_forward_file_path):
-                    cloud_forward_file_path = "products/{}/{}".format(timestamp_forward, category_code)
+                    cloud_forward_file_path = "products/{}/{}".format(timestamp_scraped_forward, category_code)
                     self.download(cloud_forward_file_path, local_forward_file_path)
-                    assert os.path.exists(local_forward_file_path)
+                    if not os.path.exists(local_forward_file_path):
+                        log_exception("Downloading {} failed! Upload scraped data with no diff check".format(cloud_forward_file_path))
+                        should_upload = True
+                        break
                 if not is_identical(local_forward_file_path, local_test_file_path):
                     should_upload = True
                     break
@@ -276,7 +279,7 @@ class DeltaChecker:
             log_exception("Exception during checking should upload or not")
             return "CHECK_DIFF_FAIL"
         if not should_upload:
-            log_info("Don't need to upload {}, forward: {}".format(timestamp, timestamp_forward))
+            log_info("Don't need to upload {}, forward: {}".format(timestamp, timestamp_scraped_forward))
             return "SKIP"
         try:
             for category_code in supported_categories():
@@ -284,7 +287,7 @@ class DeltaChecker:
                 cloud_local_test_file_path = 'products/{}/{}'.format(timestamp, category_code)
                 self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
                 log_info("{} has been uploaded to {}".format(local_test_file_path, cloud_local_test_file_path))
-                self.update_timestamp_forward(timestamp)
+                self.update_timestamp_scraped_forward(timestamp)
         except Exception:
             log_exception(
                 "Exception during uploading {} to {}".format(local_test_file_path, cloud_local_test_file_path))
@@ -315,3 +318,6 @@ class DeltaChecker:
 #     i += 1
 #
 # # deltaChecker.update_daily_delta("20210516_21_08_08")
+# deltaChecker = DeltaChecker()
+# deltaChecker.upload_products_if_necessary("20210517_15_31_28")
+# deltaChecker.update_realtime_delta("20210517_15_31_28")
