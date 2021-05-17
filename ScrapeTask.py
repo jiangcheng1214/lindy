@@ -32,8 +32,8 @@ class ScrapeTask:
             scraper.get_product_info()
             last_flag = flag
             flag, results = scraper.scrape_result()
-            database_path_prefix = 'logs/task/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])
-            self.database.child('{}/scrape'.format(database_path_prefix)).set(flag)
+            database_log_prefix = 'logs/task/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])
+            self.database.child('{}/scrape'.format(database_log_prefix)).set(flag)
             if flag not in self.results_dict:
                 self.results_dict[flag] = 0
             self.results_dict[flag] += 1
@@ -50,16 +50,16 @@ class ScrapeTask:
                 log_info("update products info attempt started")
                 products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
                 log_info("updated product? : {}".format(products_upload_result))
-                self.database.child('{}/upload'.format(database_path_prefix)).set(products_upload_result)
+                self.database.child('{}/upload'.format(database_log_prefix)).set(products_upload_result)
                 log_info("delta update attempt started")
-                delta_update_result = self.deltaChecker.check_delta_and_update_cloud()
+                delta_update_result = self.deltaChecker.update_realtime_delta(scraper.timestamp)
                 log_info("delta updated? : {}".format(delta_update_result))
-                self.database.child('{}/delta'.format(database_path_prefix)).set(delta_update_result)
+                self.database.child('{}/delta_realtime'.format(database_log_prefix)).set(delta_update_result)
             if i == self.iterations:
                 scraper.terminate()
                 break
             time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
-            self.database.child('{}/time_used'.format(database_path_prefix)).set(time_used_in_seconds)
+            self.database.child('{}/time_used'.format(database_log_prefix)).set(time_used_in_seconds)
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
             log_info("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, products_upload_result, delta_update_result, results]))
             log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))

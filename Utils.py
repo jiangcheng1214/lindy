@@ -12,8 +12,20 @@ def get_current_pst_format_timestamp():
     return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
 
 
+def get_current_pst_format_date():
+    return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d")
+
+
+def get_current_pst_format_year_month():
+    return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m")
+
+
 def get_current_pst_time():
     return datetime.now(tz=utc).astimezone(timezone('US/Pacific'))
+
+
+def get_datetime_from_string(timestamp):
+    return datetime.strptime(timestamp, "%Y%m%d_%H_%M_%S")
 
 
 def create_empty_file(dir_path, name):
@@ -60,8 +72,7 @@ def wait_random(lower_bound, higher_bound):
 
 
 def supported_categories():
-    # return ['WOMENSILKSCARVESETC', 'WOMENBAGSSMALLLEATHERGOODS']
-    return ['WOMENBAGSSMALLLEATHERGOODS']
+    return ['WOMENBAGSSMALLLEATHERGOODS', 'BIJOUTERIE', 'MENBAGSSMALLLEATHERGOODS']
 
 
 def close_all_other_tabs(driver):
