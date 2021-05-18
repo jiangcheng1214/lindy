@@ -307,11 +307,11 @@ class DeltaChecker:
                 cloud_local_test_file_path = 'products/{}/{}'.format(timestamp, category_code)
                 self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
                 log_info("{} has been uploaded to {}".format(local_test_file_path, cloud_local_test_file_path))
-                self.update_timestamp_scraped_forward(timestamp)
         except Exception:
             log_exception(
                 "Exception during uploading {} to {}".format(local_test_file_path, cloud_local_test_file_path))
             return "UPLOAD_FAIL"
+        self.update_timestamp_scraped_forward(timestamp)
         return "SUCCESS"
 
 
