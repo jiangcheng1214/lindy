@@ -32,7 +32,8 @@ class ScrapeTask:
             scraper.get_product_info()
             last_scrape_flag = scrape_flag
             scrape_flag, scrape_results = scraper.scrape_result()
-            database_log_prefix = 'logs/task/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])
+            scraper_timestamp = scraper.get_timestamp()
+            database_log_prefix = 'logs/task/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])
             self.database.child('{}/scrape'.format(database_log_prefix)).set(scrape_flag)
             if scrape_flag not in self.results_dict:
                 self.results_dict[scrape_flag] = 0
@@ -43,21 +44,21 @@ class ScrapeTask:
             if scrape_flag != "SUCCESS":
                 if last_scrape_flag != "BLOCKED" and scrape_flag == "BLOCKED":
                     self.database.child(
-                        'logs/key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(
+                        'logs/key_timestamps/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])).set(
                         scrape_flag)
                 scraper.terminate()
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
                 if not last_scrape_flag:
                     self.database.child(
-                        'logs/key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(
+                        'logs/key_timestamps/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])).set(
                         scrape_flag)
                 log_info("update products info attempt started")
-                products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
+                products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper_timestamp)
                 log_info("updated product? : {}".format(products_upload_result))
                 self.database.child('{}/upload'.format(database_log_prefix)).set(products_upload_result)
                 log_info("delta update attempt started")
-                delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper.timestamp)
+                delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper_timestamp)
                 log_info("delta updated? : {}".format(delta_realtime_update_result))
                 self.database.child('{}/delta_realtime'.format(database_log_prefix)).set(delta_realtime_update_result)
                 delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary()
@@ -77,7 +78,7 @@ class ScrapeTask:
                      "  products_upload: {}\n"
                      "  delta_realtime: {}\n"
                      "  delta_daily: {}".format(index,
-                                                scraper.timestamp,
+                                                scraper_timestamp,
                                                 time_used_in_seconds,
                                                 scrape_results,
                                                 products_upload_result,
