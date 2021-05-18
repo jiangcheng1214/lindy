@@ -117,6 +117,7 @@ class DeltaChecker:
 
         delta_db_path = "delta_realtime/{}/{}_to_{}".format(get_current_pst_format_year_month(), timestamp_base, timestamp_forward)
         check_delta_results = {}
+        delta_realtime_uploaded = False
         for category in supported_categories():
             delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward)
             if not delta_info:
@@ -153,10 +154,11 @@ class DeltaChecker:
                             self.database.child('product_updates').child(category).child("ADDED").child(sku).child(
                                 'time_available_hours').set(time_available_hours)
             check_delta_results[category] = "SUCCESS"
+            delta_realtime_uploaded = True
 
-        self.database.child(delta_db_path).child("timestamp_base").set(timestamp_base)
-        self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
-        if should_update_timestamp:
+        if delta_realtime_uploaded:
+            self.database.child(delta_db_path).child("timestamp_base").set(timestamp_base)
+            self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
             self.database.child('delta_realtime/timestamp_base').set(timestamp_forward)
         return check_delta_results
 
