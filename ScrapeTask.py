@@ -24,10 +24,10 @@ class ScrapeTask:
 
     def start(self):
         scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
-        i = 0
+        index = 0
         scrape_flag = None
         while 1:
-            i += 1
+            index += 1
             start_time = get_current_pst_time()
             scraper.get_product_info()
             last_scrape_flag = scrape_flag
@@ -37,8 +37,9 @@ class ScrapeTask:
             if scrape_flag not in self.results_dict:
                 self.results_dict[scrape_flag] = 0
             self.results_dict[scrape_flag] += 1
-            products_upload_result = False
-            delta_update_result = False
+            products_upload_result = {}
+            delta_realtime_update_result = {}
+            delta_daily_update_result = {}
             if scrape_flag != "SUCCESS":
                 if last_scrape_flag != "BLOCKED" and scrape_flag == "BLOCKED":
                     self.database.child(
@@ -62,7 +63,7 @@ class ScrapeTask:
                 delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary()
                 log_info("delta daily updated? : {}".format(delta_daily_update_result))
                 self.database.child('{}/delta_daily'.format(database_log_prefix)).set(delta_daily_update_result)
-            if i == self.iterations:
+            if index == self.iterations:
                 scraper.terminate()
                 break
             time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
@@ -71,14 +72,17 @@ class ScrapeTask:
             log_info("==========\n"
                      "  index: {}\n"
                      "  timestamp: {}\n"
-                     "  time_used_in_seconds: {}\n"
-                     "  scrape_results: {}\n  "
-                     "  products_upload_result: {}\n"
-                     "  delta_update_result: {}".format(i, scraper.timestamp,
-                                                        time_used_in_seconds,
-                                                        scrape_results,
-                                                        products_upload_result,
-                                                        delta_update_result))
+                     "  time_used: {}\n"
+                     "  scrape_results: {}\n"
+                     "  products_upload: {}\n"
+                     "  delta_realtime: {}\n"
+                     "  delta_daily: {}".format(index,
+                                                scraper.timestamp,
+                                                time_used_in_seconds,
+                                                scrape_results,
+                                                products_upload_result,
+                                                delta_realtime_update_result,
+                                                delta_daily_update_result))
             log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
             if time_until_next_scrape > 0:
                 time.sleep(time_until_next_scrape)
