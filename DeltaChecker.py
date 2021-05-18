@@ -4,7 +4,7 @@ import os
 import pyrebase
 
 from Utils import log_info, log_warning, supported_categories, log_exception, get_current_pst_format_date, \
-    get_datetime_from_string, get_current_pst_format_year_month
+    get_datetime_from_string, get_current_pst_format_year_month, get_current_pst_time
 
 
 class DeltaChecker:
@@ -162,12 +162,30 @@ class DeltaChecker:
             self.database.child('delta_realtime/timestamp_base').set(timestamp_forward)
         return check_delta_results
 
-    def update_daily_delta(self, timestamp_forward):
+    def update_daily_delta_if_necessary(self, timestamp_forward=None):
 
         def get_daily_delta_timestamp_base():
             return self.database.child('delta_daily/timestamp_base').get().val()
 
+        def get_timestamp_scraped_forward():
+            return self.database.child('timestamp_scraped_forward').get().val()
+
+        def should_update(timestamp_base, timestamp_forward):
+            hours_since_last_update = (get_datetime_from_string(timestamp_forward) - get_datetime_from_string(
+                timestamp_base)).total_seconds() / 3600
+            # daily digest at 4pm pst TODO: check historical data for optimal value
+            if get_current_pst_time().hour == 16 and hours_since_last_update > 1:
+                return True
+            else:
+                return False
+
+        if not timestamp_forward:
+            timestamp_forward = get_timestamp_scraped_forward()
         timestamp_base = get_daily_delta_timestamp_base()
+        if not should_update(timestamp_base, timestamp_forward):
+            log_info("No need to daily update")
+            return "SKIP"
+
         log_info("delta daily check ({} -> {})".format(timestamp_base, timestamp_forward))
         date_today = get_current_pst_format_date()
         daily_delta_db_path = "delta_daily/{}/{}".format(get_current_pst_format_year_month(), date_today)
@@ -319,7 +337,8 @@ class DeltaChecker:
 #     deltaChecker.update_realtime_delta(timestamp_base=ts_list[i+1], timestamp_forward=ts_list[i], should_update_timestamp=False)
 #     i += 1
 #
-# # deltaChecker.update_daily_delta("20210516_21_08_08")
+# deltaChecker.update_daily_delta()
 # deltaChecker = DeltaChecker()
 # deltaChecker.upload_products_if_necessary("20210517_15_31_28")
 # deltaChecker.update_realtime_delta("20210517_15_31_28")
+# deltaChecker.update_daily_delta_if_necessary()
