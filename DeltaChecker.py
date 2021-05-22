@@ -175,8 +175,8 @@ class DeltaChecker:
                 timestamp_base)).total_seconds() / 3600
             # daily digest between 4pm and 6pm pst TODO: check historical data for optimal value
             current_pst_hour = get_current_pst_time().hour
-            in_time_window = current_pst_hour in [16, 17]
-            if in_time_window and hours_since_last_update > 22:
+            in_time_window = current_pst_hour in [16, 17, 18, 19, 20, 21]
+            if in_time_window and hours_since_last_update > 18:
                 return True
             else:
                 return False
