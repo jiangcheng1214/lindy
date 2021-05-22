@@ -24,44 +24,66 @@ class ScrapeTask:
 
     def start(self):
         scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
-        i = 0
-        flag = None
+        index = 0
+        scrape_flag = None
         while 1:
-            i += 1
+            index += 1
             start_time = get_current_pst_time()
             scraper.get_product_info()
-            last_flag = flag
-            flag, results = scraper.scrape_result()
-            database_path_prefix = 'task_log/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])
-            self.database.child('{}/scrape'.format(database_path_prefix)).set(flag)
-            if flag not in self.results_dict:
-                self.results_dict[flag] = 0
-            self.results_dict[flag] += 1
-            products_upload_result = False
-            delta_update_result = False
-            if flag != "SUCCESS":
-                if last_flag != "BLOCKED" and flag == "BLOCKED":
-                    self.database.child('key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(flag)
+            last_scrape_flag = scrape_flag
+            scrape_flag, scrape_results = scraper.scrape_result()
+            scraper_timestamp = scraper.get_timestamp()
+            database_log_prefix = 'logs/task/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])
+            self.database.child('{}/scrape'.format(database_log_prefix)).set(scrape_flag)
+            if scrape_flag not in self.results_dict:
+                self.results_dict[scrape_flag] = 0
+            self.results_dict[scrape_flag] += 1
+            products_upload_result = {}
+            delta_realtime_update_result = {}
+            delta_daily_update_result = {}
+            if scrape_flag != "SUCCESS":
+                if last_scrape_flag != "BLOCKED" and scrape_flag == "BLOCKED":
+                    self.database.child(
+                        'logs/key_timestamps/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])).set(
+                        scrape_flag)
                 scraper.terminate()
                 scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
-                if not last_flag:
-                    self.database.child('key_timestamps/{}/{}'.format(scraper.timestamp[:8], scraper.timestamp[9:])).set(flag)
+                if not last_scrape_flag:
+                    self.database.child(
+                        'logs/key_timestamps/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])).set(
+                        scrape_flag)
                 log_info("update products info attempt started")
-                products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper.timestamp)
+                products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper_timestamp)
                 log_info("updated product? : {}".format(products_upload_result))
-                self.database.child('{}/upload'.format(database_path_prefix)).set(products_upload_result)
+                self.database.child('{}/upload'.format(database_log_prefix)).set(products_upload_result)
                 log_info("delta update attempt started")
-                delta_update_result = self.deltaChecker.check_delta_and_update_cloud()
-                log_info("delta updated? : {}".format(delta_update_result))
-                self.database.child('{}/delta'.format(database_path_prefix)).set(delta_update_result)
-            if i == self.iterations:
+                delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper_timestamp)
+                log_info("delta updated? : {}".format(delta_realtime_update_result))
+                self.database.child('{}/delta_realtime'.format(database_log_prefix)).set(delta_realtime_update_result)
+                delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary()
+                log_info("delta daily updated? : {}".format(delta_daily_update_result))
+                self.database.child('{}/delta_daily'.format(database_log_prefix)).set(delta_daily_update_result)
+            if index == self.iterations:
                 scraper.terminate()
                 break
             time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
-            self.database.child('{}/time_used'.format(database_path_prefix)).set(time_used_in_seconds)
+            self.database.child('{}/time_used'.format(database_log_prefix)).set(time_used_in_seconds)
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
-            log_info("===== {} - result:{}".format(i, [start_time, time_used_in_seconds, flag, products_upload_result, delta_update_result, results]))
-            log_info("===== time_until_next_scrape:{}".format(time_until_next_scrape))
+            log_info("==========\n"
+                     "  index: {}\n"
+                     "  timestamp: {}\n"
+                     "  time_used: {}\n"
+                     "  scrape_results: {}\n"
+                     "  products_upload: {}\n"
+                     "  delta_realtime: {}\n"
+                     "  delta_daily: {}".format(index,
+                                                scraper_timestamp,
+                                                time_used_in_seconds,
+                                                scrape_results,
+                                                products_upload_result,
+                                                delta_realtime_update_result,
+                                                delta_daily_update_result))
+            log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
             if time_until_next_scrape > 0:
                 time.sleep(time_until_next_scrape)

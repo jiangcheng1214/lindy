@@ -321,6 +321,9 @@ class Scraper:
         if not os.path.exists(self.product_dir_path):
             os.makedirs(self.product_dir_path)
 
+    def get_timestamp(self):
+        return self.timestamp
+
     def get_product_info(self):
 
         def get_product_info_from_category(category, retry=0):
