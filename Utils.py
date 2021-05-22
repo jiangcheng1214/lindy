@@ -35,7 +35,6 @@ def create_empty_file(dir_path, name):
     with open(file_path, 'w+'):
         print('{} created!'.format(file_path))
 
-
 ts = get_current_pst_format_timestamp()
 create_empty_file("logs/", "{}.log".format(ts))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s', handlers=[

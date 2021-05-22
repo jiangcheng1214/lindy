@@ -103,7 +103,7 @@ class DeltaChecker:
         log_info("updated items count: {}".format(len(updated_items)))
         return {"ADDED": added_items, "REMOVED": removed_items, "UPDATED": updated_items}
 
-    def update_realtime_delta(self, timestamp_forward, timestamp_base=None, should_update_timestamp=True):
+    def update_realtime_delta(self, timestamp_forward, timestamp_base=None):
         def get_realtime_delta_timestamp_base():
             return self.database.child('delta_realtime/timestamp_base').get().val()
 
@@ -139,20 +139,28 @@ class DeltaChecker:
                         self.database.child('product_updates').child(category).child(type).child(sku).set(item_json)
                         self.database.child('product_updates').child(category).child(type).child(sku).child(
                             'time_added').set(timestamp_forward)
+                        if self.database.child('product_updates').child(category).child("REMOVED").child(sku).get().val():
+                            self.database.child('product_updates').child(category).child(type).child(sku).child(
+                                'is_restock').set(True)
+                            self.database.child('product_updates').child(category).child("REMOVED").child(
+                                sku).remove()
+                        else:
+                            self.database.child('product_updates').child(category).child(type).child(sku).child(
+                                'is_restock').set(False)
                     if type == 'REMOVED':
                         if self.database.child('product_updates').child(category).child("ADDED").child(sku).get().val():
+                            item_detail = self.database.child('product_updates').child(
+                                category).child("ADDED").child(sku).get().val()
                             time_added = get_datetime_from_string(self.database.child('product_updates').child(
                                 category).child("ADDED").child(sku).child('time_added').get().val())
                             time_removed = get_datetime_from_string(timestamp_forward)
                             time_available_hours = (time_removed - time_added).total_seconds() / 3600
-                            self.database.child('product_updates').child(category).child(type).child(sku).child(
-                                'time_removed').set(timestamp_forward)
-                            self.database.child('product_updates').child(category).child(type).child(sku).child(
-                                'time_available_hours').set(time_available_hours)
-                            self.database.child('product_updates').child(category).child("ADDED").child(sku).child(
-                                'time_removed').set(timestamp_forward)
-                            self.database.child('product_updates').child(category).child("ADDED").child(sku).child(
-                                'time_available_hours').set(time_available_hours)
+                            item_detail['time_removed'] = timestamp_forward
+                            item_detail['time_available_hours'] = time_available_hours
+                            self.database.child('product_updates').child(category).child(type).child(sku).set(
+                                item_detail)
+                            self.database.child('product_updates').child(category).child("REMOVED").child(
+                                sku).remove()
             check_delta_results[category] = "SUCCESS"
             delta_realtime_uploaded = True
 
@@ -341,6 +349,6 @@ class DeltaChecker:
 #
 # deltaChecker.update_daily_delta()
 # deltaChecker = DeltaChecker()
-# deltaChecker.upload_products_if_necessary("20210517_15_31_28")
-# deltaChecker.update_realtime_delta("20210517_15_31_28")
+# deltaChecker.upload_products_if_necessary("20210521_23_41_00")
+# deltaChecker.update_realtime_delta("20210521_23_41_00")
 # deltaChecker.update_daily_delta_if_necessary()
