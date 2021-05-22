@@ -6,7 +6,7 @@ import urllib
 import random
 from fake_useragent import UserAgent
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp, wait_random, close_all_other_tabs, delete_dir
+    get_current_pst_format_timestamp, wait_random, delete_dir
 import pydub
 import speech_recognition as sr
 from seleniumwire import webdriver
@@ -336,7 +336,7 @@ class Scraper:
             # workaround to simulate human behavior
             blocked = True
             attempt = 0
-            while attempt < 5:
+            while attempt < 3:
                 attempt += 1
                 self.driver.get(URL)
                 wait_random(3, 4)
@@ -377,16 +377,8 @@ class Scraper:
                 return get_product_info_from_category(category, retry + 1)
             log_info('total product count = {}'.format(total))
             results = []
-            num_of_extra_tab_needed = int((total-1)/constants.PRODUCT_PAGE_SIZE)
-            for i in range(num_of_extra_tab_needed):
-                wait_random(2, 3)
-                offset = (i+1) * constants.PRODUCT_PAGE_SIZE
-                URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
-                                                          constants.PRODUCT_PAGE_SIZE,
-                                                          offset)
-                self.driver.execute_script("window.open('{}');".format(URL))
-            '''
-            while response_json['total'] > 0:
+            offset = 0
+            while 1:
                 products = response_json['products']['items']
                 log_info('current product list count = {}'.format(len(products)))
                 for p in products:
@@ -395,23 +387,30 @@ class Scraper:
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
-                # wait_random(1.5, 3)
-                # if not self.open_url_and_crack_antibot(URL):
-                #     log_info("open URL failed: {}".format(URL))
-                #     return get_product_info_from_category(category, retry + 1)
+                wait_random(0.5, 1)
                 self.driver.get(URL)
                 try:
                     WebDriverWait(self.driver, 10).until(
                         lambda driver: driver.find_element_by_tag_name("pre").text)
-                    time.sleep(random.uniform(0.2, 0.3))
+                    wait_random(0.5, 1)
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
                     if 'total' not in response_json:
                         log_exception("total is not a field of: {}".format(response_json))
                         return get_product_info_from_category(category, retry + 1)
+                    if not response_json['products']['items']:
+                        break
                 except Exception:
                     log_exception("load json failed: {}".format(URL))
                     return get_product_info_from_category(category, retry + 1)
             '''
+            num_of_extra_tab_needed = int((total-1)/constants.PRODUCT_PAGE_SIZE)
+            for i in range(num_of_extra_tab_needed):
+                wait_random(2, 3)
+                offset = (i+1) * constants.PRODUCT_PAGE_SIZE
+                URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
+                                                          constants.PRODUCT_PAGE_SIZE,
+                                                          offset)
+                self.driver.execute_script("window.open('{}');".format(URL))
             wait_random(5, 6)
             for window_handler_id in self.driver.window_handles:
                 wait_random(1, 1.5)
@@ -428,6 +427,7 @@ class Scraper:
                     return get_product_info_from_category(category, retry + 1)
 
             close_all_other_tabs(self.driver)
+            '''
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
