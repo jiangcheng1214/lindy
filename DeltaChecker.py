@@ -181,7 +181,6 @@ class DeltaChecker:
         def should_update(timestamp_base, timestamp_forward):
             hours_since_last_update = (get_datetime_from_string(timestamp_forward) - get_datetime_from_string(
                 timestamp_base)).total_seconds() / 3600
-            # daily digest between 4pm and 6pm pst TODO: check historical data for optimal value
             current_pst_hour = get_current_pst_time().hour
             in_time_window = current_pst_hour >= 16
             if in_time_window and hours_since_last_update >= 16:
@@ -229,7 +228,7 @@ class DeltaChecker:
         self.database.child('delta_daily/timestamp_base').set(timestamp_forward)
         self.database.child(daily_delta_db_path).child("timestamp_base").set(timestamp_base)
         self.database.child(daily_delta_db_path).child("timestamp_forward").set(timestamp_forward)
-        return check_delta_results
+        return "SUCCESS"
 
     def is_scrape_success(self, timestamp):
         for category_code in supported_categories():

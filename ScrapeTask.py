@@ -4,8 +4,10 @@ import time
 import pyrebase
 
 from DeltaChecker import DeltaChecker
+from EmailSender import EmailSender
 from Scraper import Scraper
-from Utils import supported_categories, log_info, get_current_pst_time
+from Utils import supported_categories, log_info, get_current_pst_time, get_current_pst_format_year_month, \
+    get_current_pst_format_date
 
 
 class ScrapeTask:
@@ -21,6 +23,7 @@ class ScrapeTask:
             credentials = json.load(f)
         self.firebase = pyrebase.initialize_app(credentials)
         self.database = self.firebase.database()
+        self.emailSender = EmailSender()
 
     def start(self):
         scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
@@ -64,6 +67,11 @@ class ScrapeTask:
                 delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary()
                 log_info("delta daily updated? : {}".format(delta_daily_update_result))
                 self.database.child('{}/delta_daily'.format(database_log_prefix)).set(delta_daily_update_result)
+                if delta_daily_update_result == "SUCCESS":
+                    try:
+                        self.emailSender.send_daily_update(get_current_pst_format_year_month(), get_current_pst_format_date())
+                    except:
+                        log_info("Failed to send daily email!")
             if index == self.iterations:
                 scraper.terminate()
                 break

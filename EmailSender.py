@@ -1,88 +1,91 @@
 import json
 
 import sendgrid
-from sendgrid import To
 
-from Utils import get_current_pst_format_date
-
-with open('credentials/sendgrid_credentials.json', 'r') as f:
-    credentials = json.load(f)
-
-sg = sendgrid.SendGridAPIClient(credentials['apiKey'])
-TO_EMAILS = [
-    To(
-        email='jayceejiang1214@gmail.com',
-        subject="Hermes product daily update",
-    ),
-]
-
-added_list = [
-    {
-        "assets": [{
-            "url": "//assets.hermes.com/is/image/hermesproduct/0005471%2093_front_1?a=a&size=3000,3000&extend=300,300,300,300&align=0,1"
-        }, {
-            "url": "//assets.hermes.com/is/image/hermesproduct/0005471%2093_front_2?a=a&size=3000,3000&extend=300,300,300,300&align=0,1"
-        }, {
-            "url": "//assets.hermes.com/is/image/hermesproduct/0005471%2093_front_3?a=a&size=3000,3000&extend=300,300,300,300&align=0,1"
-        }],
-        "price": 299,
-        "time_added": "20210520_14_09_15",
-        "time_available_hours": 6.335,
-        "time_removed": "20210520_20_29_21",
-        "title": "Apple AirTag Hermes bag charm",
-        "url": "/product/apple-airtag-hermes-bag-charm-H0005471v9300"
-    },
-    {
-        "assets": [{
-            "url": "//assets.hermes.com/is/image/hermesproduct/0005501%2034_front_1?a=a&size=3000,3000&extend=300,300,300,300&align=0,1"
-        }, {
-            "url": "//assets.hermes.com/is/image/hermesproduct/0005501%2034_front_2?a=a&size=3000,3000&extend=300,300,300,300&align=0,1"
-        }, {
-            "url": "//assets.hermes.com/is/image/hermesproduct/0005501%2034_front_3?a=a&size=3000,3000&extend=300,300,300,300&align=0,1"
-        }],
-        "price": 349,
-        "time_added": "20210519_12_03_50",
-        "time_available_hours": 3.5841666666666665,
-        "time_removed": "20210519_15_38_53",
-        "title": "Apple AirTag Hermes key ring",
-        "url": "/product/apple-airtag-hermes-key-ring-H0005501v3400"
-    }
-]
-
-product_template = '''
-<p><img src="{}" alt="interactive connection" width="210" height="196" /><img src="{}" height="196" /></p>
-<p><a href="{}">{}</a></p>
-<p>price:{}</p>
-'''
-added_item_html = ''
-for item in added_list:
-    item_html = product_template.format('https:' + item['assets'][0]['url'], 'https:' + item['assets'][1]['url'], 'https://www.hermes.com/us/en' + item['url'], item['title'], item['price'])
-    added_item_html += item_html
+from Utils import get_current_pst_format_date, supported_categories, get_current_pst_format_year_month
+import pyrebase
 
 
-html_content = '''
-<h1>Update on {}</h1>
-<h2>New Items:</h2>
-{}
-<h2>Removed Items:</h2>
-<p><img src="https://assets.hermes.com/is/image/hermesproduct/0005471%2093_front_1?a=a&amp;size=3000,3000&amp;extend=300,300,300,300&amp;align=0,1" alt="interactive connection" width="210" height="196" /><img src="https://assets.hermes.com/is/image/hermesproduct/0005471%2093_front_2?a=a&amp;size=3000,3000&amp;extend=300,300,300,300&amp;align=0,1" alt="interactive connection" width="210" height="196" /></p>
-<p><a href="https://www.hermes.com/us/en/product/apple-airtag-hermes-bag-charm-H0005471v9300/">title 1</a></p>
-<p>price:</p>
-<p><strong><br />Save this link into your bookmarks and share it with your friends. It is all FREE! </strong><br /><strong>Enjoy!</strong></p>
-'''.format(get_current_pst_format_date(), added_item_html)
+class EmailSender:
+    def __init__(self):
+        with open('credentials/firebase_credentials.json', 'r') as f:
+            firebase_credentials = json.load(f)
+        self.firebase = pyrebase.initialize_app(firebase_credentials)
+        self.database = self.firebase.database()
 
-message = sendgrid.Mail(
-    from_email='jiangcheng1214@gmail.com',
-    to_emails=[
-        'chengjiang1214@gmail.com',
-        'haotianwu3@gmail.com',
-        'limeihui816@hotmail.com'
-    ],
-    subject='Hermes product daily update ({})'.format(get_current_pst_format_date()),
-    html_content=html_content
-)
+        with open('credentials/sendgrid_credentials.json', 'r') as f:
+            sendgrid_credentials = json.load(f)
+        self.sg = sendgrid.SendGridAPIClient(sendgrid_credentials['apiKey'])
 
-response = sg.send(message)
-print(response.status_code)
-print(response.body)
-print(response.headers)
+    def send_daily_update(self, month_string, day_string):
+        def image_html(item):
+            template = '''<img src="{}" height="150" />'''
+            html = ''
+            for url in item['assets']:
+                html += template.format('https:' + url['url'])
+            return html
+        daily_delta_db_path = "delta_daily/{}/{}".format(month_string, day_string)
+        print('sending email for {} update'.format(daily_delta_db_path))
+        daily_delta_data = self.database.child(daily_delta_db_path).get().val()
+        if not daily_delta_data:
+            print("daily delta not exists: {}".format(daily_delta_db_path))
+            return
+        product_template = '''
+            <hr />
+            <p>{}</p>
+            <p>{} - <a href="{}">{}</a></p>
+            <p>Price: ${}</p>
+            <p>Category: {}</p>
+            '''
+        added_item_html = ''
+        count = 0
+        for category_code in supported_categories():
+            if category_code not in daily_delta_data:
+                print('{} not in daily_delta_data'.format(category_code))
+                continue
+            if "ADDED" not in daily_delta_data[category_code]:
+                print('ADDED not in daily_delta_data[{}]'.format(category_code))
+                continue
+            for sku in daily_delta_data[category_code]['ADDED']:
+                count += 1
+                item = daily_delta_data[category_code]['ADDED'][sku]
+                item_html = product_template.format(image_html(item), count,
+                                                    'https://www.hermes.com/us/en' + item['url'], item['title'],
+                                                    item['price'], category_code)
+                added_item_html += item_html
+
+        if count == 0:
+            print('NO NEW ITEMS on {}'.format(daily_delta_db_path))
+            return
+        html_content = '''
+        <h1>Update on {}</h1>
+        <h2>New Items ({} in total):</h2>
+        {}
+        <p><strong><br />Thanks for staying updated with us!</strong></p>
+        '''.format(day_string, count - 1, added_item_html)
+        print(daily_delta_data)
+
+        message = sendgrid.Mail(
+            from_email='jiangcheng1214@gmail.com',
+            to_emails=[
+                'chengjiang1214@gmail.com',
+                'haotianwu3@gmail.com',
+                'limeihui816@hotmail.com'
+            ],
+            subject='Hermes product daily update ({})'.format(day_string),
+            html_content=html_content
+        )
+        response = self.sg.send(message)
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+
+
+# sender = EmailSender()
+# sender.send_daily_update(get_current_pst_format_year_month(), get_current_pst_format_date())
+# sender.send_daily_up
+# date("202105", "20210524")
+# response = sg.send(message)
+# print(response.status_code)
+# print(response.body)
+# print(response.headers)
