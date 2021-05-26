@@ -159,7 +159,7 @@ class DeltaChecker:
                             item_detail['time_available_hours'] = time_available_hours
                             self.database.child('product_updates').child(category).child(type).child(sku).set(
                                 item_detail)
-                            self.database.child('product_updates').child(category).child("REMOVED").child(
+                            self.database.child('product_updates').child(category).child("ADDED").child(
                                 sku).remove()
             check_delta_results[category] = "SUCCESS"
             delta_realtime_uploaded = True
@@ -183,8 +183,8 @@ class DeltaChecker:
                 timestamp_base)).total_seconds() / 3600
             # daily digest between 4pm and 6pm pst TODO: check historical data for optimal value
             current_pst_hour = get_current_pst_time().hour
-            in_time_window = current_pst_hour in [16, 17]
-            if in_time_window and hours_since_last_update > 22:
+            in_time_window = current_pst_hour >= 16
+            if in_time_window and hours_since_last_update >= 16:
                 return True
             else:
                 return False
@@ -351,4 +351,5 @@ class DeltaChecker:
 # deltaChecker = DeltaChecker()
 # deltaChecker.upload_products_if_necessary("20210521_23_41_00")
 # deltaChecker.update_realtime_delta("20210521_23_41_00")
-# deltaChecker.update_daily_delta_if_necessary()
+# deltaChecker.update_daily_delta_if_necessary("20210525_16_49_14")
+# deltaChecker.get_all_scraped_timestamps()
