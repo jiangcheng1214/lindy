@@ -156,8 +156,8 @@ class EmailSender:
             from_email='jiangcheng1214@gmail.com',
             to_emails=[
                 'chengjiang1214@gmail.com',
-                # 'haotianwu3@gmail.com',
-                # 'limeihui816@hotmail.com'
+                'haotianwu3@gmail.com',
+                'limeihui816@hotmail.com'
             ],
             subject='Hermes product daily update ({})'.format(date_string),
             html_content=html_content
