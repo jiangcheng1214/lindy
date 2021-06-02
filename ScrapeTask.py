@@ -6,8 +6,7 @@ import pyrebase
 from DeltaChecker import DeltaChecker
 from EmailSender import EmailSender
 from Scraper import Scraper
-from Utils import supported_categories, log_info, get_current_pst_time, get_current_pst_format_year_month, \
-    get_current_pst_format_date
+from Utils import supported_categories, log_info, get_current_pst_time, get_current_pst_format_date
 
 
 class ScrapeTask:
@@ -69,7 +68,7 @@ class ScrapeTask:
                 self.database.child('{}/delta_daily'.format(database_log_prefix)).set(delta_daily_update_result)
                 if delta_daily_update_result == "SUCCESS":
                     try:
-                        self.emailSender.send_daily_update(get_current_pst_format_year_month(), get_current_pst_format_date())
+                        self.emailSender.send_daily_update(get_current_pst_format_date())
                     except:
                         log_info("Failed to send daily email!")
             if index == self.iterations:
