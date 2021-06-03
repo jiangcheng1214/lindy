@@ -72,7 +72,7 @@ class Scraper:
                                            options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        self.print_ip()
+        # self.print_ip()
         self.locale_code = locale_code
         self.category_codes = supported_categories()
 
@@ -464,6 +464,7 @@ class Scraper:
             flag = "BLOCKED"
         return flag, results
 
+    '''
     def print_ip(self):
         try:
             self.driver.get('https://api.ipify.org/')
@@ -471,6 +472,7 @@ class Scraper:
             print('ip: {}'.format(detected_ip))
         except:
             print('print_ip exception')
+    '''
 
     def get_timestamp(self):
         return self.timestamp
