@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 import time
 
 import pyrebase
@@ -25,11 +27,17 @@ class ScrapeTask:
         self.emailSender = EmailSender()
 
     def start(self):
+        def cleanup():
+            dirpath = 'temp'
+            if os.path.exists(dirpath) and os.path.isdir(dirpath):
+                shutil.rmtree(dirpath)
+
         scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
         index = 0
         scrape_flag = None
         while 1:
             index += 1
+            cleanup()
             start_time = get_current_pst_time()
             scraper.get_product_info()
             last_scrape_flag = scrape_flag

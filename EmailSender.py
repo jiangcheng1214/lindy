@@ -3,7 +3,7 @@ import json
 import pyrebase
 import sendgrid
 
-from Utils import supported_categories
+from Utils import supported_categories, get_current_pst_format_timestamp
 
 
 class EmailSender:
@@ -161,6 +161,20 @@ class EmailSender:
             ],
             subject='Hermes product daily update ({})'.format(date_string),
             html_content=html_content
+        )
+        response = self.sg.send(message)
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+
+    def notice_admins_on_exception(self, exception, retry):
+        message = sendgrid.Mail(
+            from_email='jiangcheng1214@gmail.com',
+            to_emails=[
+                'chengjiang1214@gmail.com',
+            ],
+            subject='Hermes scraper exception on ({}) retry = {}'.format(get_current_pst_format_timestamp(), retry),
+            html_content='''<h1>Exception: {}</h1>'''.format(exception)
         )
         response = self.sg.send(message)
         print(response.status_code)
