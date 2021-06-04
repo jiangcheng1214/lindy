@@ -68,6 +68,10 @@ def supported_categories():
     return ['WOMENBAGSSMALLLEATHERGOODS', 'BIJOUTERIE', 'MENBAGSSMALLLEATHERGOODS']
 
 
+def supported_locales():
+    return ['us_en', 'cn_zh', 'uk_en', 'de_de']
+
+
 def close_all_other_tabs(driver):
     cur = driver.current_window_handle
     for handle in driver.window_handles:

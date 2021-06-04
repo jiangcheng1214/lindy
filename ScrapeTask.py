@@ -12,8 +12,9 @@ from Utils import supported_categories, log_info, get_current_pst_time, get_curr
 
 
 class ScrapeTask:
-    def __init__(self, iterations, interval_seconds=60, debug=False, on_proxy=False):
+    def __init__(self, locale_code, iterations=-1, interval_seconds=60, debug=False, on_proxy=False):
         self.category_codes = supported_categories()
+        self.locale_code = locale_code
         self.results_dict = {}
         self.iterations = iterations
         self.interval_seconds = interval_seconds
@@ -32,6 +33,7 @@ class ScrapeTask:
             if os.path.exists(dirpath) and os.path.isdir(dirpath):
                 shutil.rmtree(dirpath)
 
+        raise Exception("Custom Exception")
         scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
         index = 0
         scrape_flag = None

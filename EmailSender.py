@@ -167,14 +167,17 @@ class EmailSender:
         print(response.body)
         print(response.headers)
 
-    def notice_admins_on_exception(self, exception, retry):
+    def notice_admins_on_exception(self, exception, context, retry):
         message = sendgrid.Mail(
             from_email='jiangcheng1214@gmail.com',
             to_emails=[
                 'chengjiang1214@gmail.com',
             ],
             subject='Hermes scraper exception on ({}) retry = {}'.format(get_current_pst_format_timestamp(), retry),
-            html_content='''<h1>Exception: {}</h1>'''.format(exception)
+            html_content='''
+            <h1>Exception: {}</h1>
+            <h1>Context: {}</h1>
+            '''.format(exception, context)
         )
         response = self.sg.send(message)
         print(response.status_code)
