@@ -4,7 +4,7 @@ from ScrapeTask import ScrapeTask
 retry = False
 while not retry:
     try:
-        task = ScrapeTask(iterations=-1, interval_seconds=60 * 5, debug=False, on_proxy=False)
+        task = ScrapeTask(iterations=-1, interval_seconds=60, debug=False, on_proxy=False)
         task.start()
     except Exception as e:
         emailSender = EmailSender()

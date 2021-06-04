@@ -339,13 +339,13 @@ class Scraper:
             while attempt < 3:
                 attempt += 1
                 self.driver.get(URL)
-                wait_random(3, 4)
+                wait_random(2, 3)
                 if not self.is_blocked():
                     blocked = False
                     break
                 else:
                     self.driver.get('https://www.google.com/')
-                    wait_random(3, 4)
+                    wait_random(2, 3)
 
             if blocked:
                 log_warning("after {} attempts, still being BLOCKED!".format(attempt))
@@ -387,12 +387,12 @@ class Scraper:
                 URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
-                wait_random(0.5, 1)
+                wait_random(0.2, 0.3)
                 self.driver.get(URL)
                 try:
                     WebDriverWait(self.driver, 10).until(
                         lambda driver: driver.find_element_by_tag_name("pre").text)
-                    wait_random(0.5, 1)
+                    wait_random(0.2, 0.3)
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
                     if 'total' not in response_json:
                         log_exception("total is not a field of: {}".format(response_json))
