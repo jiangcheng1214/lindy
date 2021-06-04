@@ -79,9 +79,6 @@ class ScrapeTask:
                         self.emailSender.send_daily_update(get_current_pst_format_date())
                     except:
                         log_info("Failed to send daily email!")
-            if index == self.iterations:
-                scraper.terminate()
-                break
             time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
             self.database.child('{}/time_used'.format(database_log_prefix)).set(time_used_in_seconds)
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
@@ -100,5 +97,12 @@ class ScrapeTask:
                                                 delta_realtime_update_result,
                                                 delta_daily_update_result))
             log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
+            if index == self.iterations:
+                scraper.terminate()
+                break
+            if last_scrape_flag == "BLOCKED" and scrape_flag == "BLOCKED":
+                scraper.terminate()
+                raise Exception("Scraper is Blocked")
+                break
             if time_until_next_scrape > 0:
                 time.sleep(time_until_next_scrape)
