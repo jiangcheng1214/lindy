@@ -4,12 +4,17 @@ import re
 import time
 import urllib
 import random
+
+import selenium
 from fake_useragent import UserAgent
+from selenium.webdriver import Proxy
+from selenium.webdriver.common.proxy import ProxyType
+
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
     get_current_pst_format_timestamp, wait_random, delete_dir
 import pydub
 import speech_recognition as sr
-from seleniumwire import webdriver
+import seleniumwire
 from random_user_agent.params import SoftwareName, OperatingSystem
 from random_user_agent.user_agent import UserAgent
 from selenium.webdriver.chrome.options import Options
@@ -65,14 +70,22 @@ class Scraper:
 
         # setup proxy
         if on_proxy:
-            with open('credentials/proxy_config.json', 'r') as f:
-                proxy_option = json.load(f)
-                seleniumwire_options = proxy_option
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
-                                           options=options)
+            # with open('credentials/proxy_config.json', 'r') as f:
+            #     proxy_option = json.load(f)
+            #     seleniumwire_options = proxy_option
+            PROXY = "131.153.151.250:8072"
+            selenium.webdriver.DesiredCapabilities.CHROME['proxy'] = {
+                "httpProxy": PROXY,
+                "ftpProxy": PROXY,
+                "sslProxy": PROXY,
+                "noProxy": None,
+                "proxyType": "MANUAL",
+                "autodetect": False
+            }
+            self.driver = selenium.webdriver.Chrome(CHROMEDRIVER_BIN_PATH, desired_capabilities=selenium.webdriver.DesiredCapabilities.CHROME, options=options)
         else:
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        # self.print_ip()
+            self.driver = selenium.webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+        self.print_ip()
         self.locale_code = locale_code
         self.category_codes = supported_categories()
 
@@ -464,7 +477,6 @@ class Scraper:
             flag = "BLOCKED"
         return flag, results
 
-    '''
     def print_ip(self):
         try:
             self.driver.get('https://api.ipify.org/')
@@ -472,7 +484,6 @@ class Scraper:
             print('ip: {}'.format(detected_ip))
         except:
             print('print_ip exception')
-    '''
 
     def get_timestamp(self):
         return self.timestamp
