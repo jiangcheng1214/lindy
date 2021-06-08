@@ -60,7 +60,6 @@ def log_warning(s):
 def wait_random(lower_bound, higher_bound):
     assert lower_bound <= higher_bound
     random_wait = random.uniform(lower_bound, higher_bound)
-    log_info("random_wait: {}".format(random_wait))
     time.sleep(random_wait)
 
 

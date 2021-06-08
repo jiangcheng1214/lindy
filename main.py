@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 
 import Scraper
@@ -15,21 +16,19 @@ class ThreadWrappedTask(Thread):
         retry = 0
         retry_limit = 2
         while retry < retry_limit:
-            # task = ScrapeTask(self.locale_code, iterations=-1, interval_seconds=60 * 3, debug=False, on_proxy=False)
-            # task.start()
             try:
-                task = ScrapeTask(self.locale_code, iterations=-1, interval_seconds=60*3, debug=False, on_proxy=False)
+                task = ScrapeTask(self.locale_code, iterations=-1, interval_seconds=60 * 5, debug=False, on_proxy=False)
                 task.start()
             except Exception as e:
                 email_sender = EmailSender()
                 email_sender.notice_admins_on_exception(e, self.locale_code, retry)
                 retry += 1
                 wait_random(2, 3)
+        print("Exit the whole program due to one thread exception")
+        os._exit(1)
 
-
-# threads = []
 
 for locale_code in supported_locales():
     threaded_task = ThreadWrappedTask(locale_code)
     threaded_task.start()
-    wait_random(5, 5)
+    wait_random(360, 360)
