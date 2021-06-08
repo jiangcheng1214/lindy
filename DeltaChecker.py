@@ -331,8 +331,10 @@ class DeltaChecker:
                 cloud_local_test_file_path = '{}/products/{}/{}'.format(locale_code, timestamp, category_code)
                 self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
                 log_info("{} has been uploaded to {}".format(local_test_file_path, cloud_local_test_file_path))
-        except Exception:
-            log_exception("Exception during uploading")
+                # workaround to make sure file is uploaded (pyrebase uploads folder accidentally instead)
+                self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
+        except Exception as e:
+            log_exception("Exception during uploading {}".format(e))
             return "UPLOAD_FAIL"
         self.update_timestamp_scraped_forward(timestamp, locale_code)
         return "SUCCESS"
@@ -355,6 +357,7 @@ class DeltaChecker:
 # ]
 #
 # deltaChecker = DeltaChecker()
+# deltaChecker.upload_products_if_necessary("20210608_01_28_39", "us_en")
 # i = 0
 # while i < len(ts_list) - 1:
 #     deltaChecker.update_realtime_delta(timestamp_base=ts_list[i+1], timestamp_forward=ts_list[i], should_update_timestamp=False)
