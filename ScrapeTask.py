@@ -19,33 +19,32 @@ class ScrapeTask:
         self.iterations = iterations
         self.interval_seconds = interval_seconds
         self.debug = debug
-        self.deltaChecker = DeltaChecker()
+        self.deltaChecker = DeltaChecker(locale_code)
         self.on_proxy = on_proxy
         with open('credentials/firebase_credentials.json', 'r') as f:
             credentials = json.load(f)
         self.firebase = pyrebase.initialize_app(credentials)
         self.database = self.firebase.database()
         self.emailSender = EmailSender()
+        self.temp_dir_path = 'temp/{}'.format(self.locale_code)
+
+    def cleanup(self):
+        if os.path.exists(self.temp_dir_path) and os.path.isdir(self.temp_dir_path):
+            shutil.rmtree(self.temp_dir_path)
 
     def start(self):
-        def cleanup():
-            dirpath = 'temp'
-            if os.path.exists(dirpath) and os.path.isdir(dirpath):
-                shutil.rmtree(dirpath)
-
-        raise Exception("Custom Exception")
-        scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
+        scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug, locale_code=self.locale_code)
         index = 0
         scrape_flag = None
         while 1:
             index += 1
-            cleanup()
+            self.cleanup()
             start_time = get_current_pst_time()
             scraper.get_product_info()
             last_scrape_flag = scrape_flag
             scrape_flag, scrape_results = scraper.scrape_result()
             scraper_timestamp = scraper.get_timestamp()
-            database_log_prefix = 'logs/task/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])
+            database_log_prefix = '{}/logs/task/{}/{}'.format(self.locale_code, scraper_timestamp[:8], scraper_timestamp[9:])
             self.database.child('{}/scrape'.format(database_log_prefix)).set(scrape_flag)
             if scrape_flag not in self.results_dict:
                 self.results_dict[scrape_flag] = 0
@@ -56,14 +55,14 @@ class ScrapeTask:
             if scrape_flag != "SUCCESS":
                 if last_scrape_flag != "BLOCKED" and scrape_flag == "BLOCKED":
                     self.database.child(
-                        'logs/key_timestamps/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])).set(
+                        '{}/logs/key_timestamps/{}/{}'.format(self.locale_code, scraper_timestamp[:8], scraper_timestamp[9:])).set(
                         scrape_flag)
                 scraper.terminate()
-                scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
+                scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug, locale_code=self.locale_code)
             else:
                 if not last_scrape_flag:
                     self.database.child(
-                        'logs/key_timestamps/{}/{}'.format(scraper_timestamp[:8], scraper_timestamp[9:])).set(
+                        '{}/logs/key_timestamps/{}/{}'.format(self.locale_code, scraper_timestamp[:8], scraper_timestamp[9:])).set(
                         scrape_flag)
                 log_info("update products info attempt started")
                 products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper_timestamp)
@@ -88,13 +87,14 @@ class ScrapeTask:
             self.database.child('{}/time_used'.format(database_log_prefix)).set(time_used_in_seconds)
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
             log_info("==========\n"
+                     "  country: {}\n"
                      "  index: {}\n"
                      "  timestamp: {}\n"
                      "  time_used: {}\n"
                      "  scrape_results: {}\n"
                      "  products_upload: {}\n"
                      "  delta_realtime: {}\n"
-                     "  delta_daily: {}".format(index,
+                     "  delta_daily: {}".format(self.locale_code, index,
                                                 scraper_timestamp,
                                                 time_used_in_seconds,
                                                 scrape_results,

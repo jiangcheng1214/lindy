@@ -9,7 +9,8 @@ from Utils import log_exception, log_info, create_empty_file, log_warning, suppo
     get_current_pst_format_timestamp, wait_random, delete_dir
 import pydub
 import speech_recognition as sr
-from seleniumwire import webdriver
+import seleniumwire
+import selenium
 from random_user_agent.params import SoftwareName, OperatingSystem
 from random_user_agent.user_agent import UserAgent
 from selenium.webdriver.chrome.options import Options
@@ -22,7 +23,7 @@ import constants
 
 CHROMEDRIVER_BIN_PATH = '/usr/local/bin/chromedriver'
 
-
+'''
 class LocaleInfo:
     def __init__(self, country_name, country_code, language_code, href):
         self.country_name = country_name
@@ -37,10 +38,10 @@ class LocaleInfo:
             "language_code": self.language_code,
             "href": self.href,
         })
-
+'''
 
 class Scraper:
-    def __init__(self, on_proxy=False, headless=True, locale_code='us/en'):
+    def __init__(self, on_proxy=False, headless=True, locale_code='us_en'):
         options = Options()
 
         # setup userAgent
@@ -68,11 +69,11 @@ class Scraper:
             with open('credentials/proxy_config.json', 'r') as f:
                 proxy_option = json.load(f)
                 seleniumwire_options = proxy_option
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
+            self.driver = seleniumwire.webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
                                            options=options)
         else:
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        # self.print_ip()
+            self.driver = selenium.webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+        self.print_ip()
         self.locale_code = locale_code
         self.category_codes = supported_categories()
 
@@ -185,14 +186,6 @@ class Scraper:
             log_info("clicked verify button geetest_radar_btn")
             WebDriverWait(self.driver, 15).until(
                 expected_conditions.presence_of_element_located((By.XPATH, '//a[@class="geetest_voice"]')))
-            # WebDriverWait(self.driver, 30).until(expected_conditions.presence_of_element_located((By.XPATH, '//span[@class="geetest_reset_tip_content"] | //a[@class="geetest_voice"]')))
-            # if self.driver.find_elements_by_xpath('//span[@class="geetest_reset_tip_content"]'):
-            #     log_info("failed to load audio verification, refreshing")
-            #     self.driver.switch_to.default_content()
-            #     self.driver.refresh()
-            #     time.sleep(1)
-            #     return self.solve_recaptha()
-            # else:
             time.sleep(random.uniform(1, 2))
             self.driver.find_element_by_xpath('//a[@class="geetest_voice"]').click()
             log_info("clicked voice verify button geetest_voice")
@@ -311,10 +304,10 @@ class Scraper:
     #     return True
 
     def create_timestamped_data_dir(self):
-        delete_dir(os.path.join(os.getcwd(), 'temp/scraper'))
+        delete_dir(os.path.join(os.getcwd(), 'temp', self.locale_code, 'scraper'))
 
         self.timestamp = get_current_pst_format_timestamp()
-        self.temp_dir_path = os.path.join(os.getcwd(), 'temp/scraper/{}'.format(self.timestamp))
+        self.temp_dir_path = os.path.join(os.getcwd(), 'temp', self.locale_code, 'scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.temp_dir_path):
             os.makedirs(self.temp_dir_path)
         self.product_dir_path = os.path.join(self.temp_dir_path, 'product')
@@ -323,6 +316,38 @@ class Scraper:
 
     def get_timestamp(self):
         return self.timestamp
+
+    def open_first_hermes_page(self):
+        URL = 'https://bck.hermes.com/products?locale=us_en&category=WOMENBAGSSMALLLEATHERGOODS&pagesize=108&offset=0'
+
+        # workaround to simulate human behavior
+        blocked = True
+        attempt = 0
+        while attempt < 3:
+            attempt += 1
+            self.driver.get(URL)
+            wait_random(3, 4)
+            if not self.is_blocked():
+                blocked = False
+                break
+            else:
+                self.driver.get('https://www.google.com/')
+                wait_random(3, 4)
+
+        if blocked:
+            log_warning("after {} attempts, still being BLOCKED!".format(attempt))
+            create_empty_file(self.product_dir_path, "BLOCKED")
+            return False
+
+        if self.is_detected_by_anti_bot():
+            if self.solve_recaptha():
+                log_info('solve_recaptha done!')
+                return True
+            else:
+                log_info('solve_recaptha failed!')
+                return False
+        else:
+            return True
 
     def get_product_info(self):
 
@@ -464,7 +489,6 @@ class Scraper:
             flag = "BLOCKED"
         return flag, results
 
-    '''
     def print_ip(self):
         try:
             self.driver.get('https://api.ipify.org/')
@@ -472,7 +496,6 @@ class Scraper:
             print('ip: {}'.format(detected_ip))
         except:
             print('print_ip exception')
-    '''
 
     def get_timestamp(self):
         return self.timestamp

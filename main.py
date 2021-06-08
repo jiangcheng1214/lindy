@@ -1,5 +1,6 @@
 from threading import Thread
 
+import Scraper
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from Utils import supported_locales, wait_random
@@ -14,8 +15,10 @@ class ThreadWrappedTask(Thread):
         retry = 0
         retry_limit = 2
         while retry < retry_limit:
+            # task = ScrapeTask(self.locale_code, iterations=-1, interval_seconds=60 * 3, debug=False, on_proxy=False)
+            # task.start()
             try:
-                task = ScrapeTask(self.locale_code, iterations=-1, interval_seconds=60, debug=False, on_proxy=False)
+                task = ScrapeTask(self.locale_code, iterations=-1, interval_seconds=60*3, debug=False, on_proxy=False)
                 task.start()
             except Exception as e:
                 email_sender = EmailSender()
@@ -24,8 +27,9 @@ class ThreadWrappedTask(Thread):
                 wait_random(2, 3)
 
 
-threads = []
+# threads = []
 
 for locale_code in supported_locales():
     threaded_task = ThreadWrappedTask(locale_code)
     threaded_task.start()
+    wait_random(5, 5)
