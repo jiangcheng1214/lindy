@@ -74,7 +74,11 @@ class ScrapeTask:
                 log_info("delta update attempt started")
                 delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper_timestamp, locale_code)
                 log_info("delta updated? : {}".format(delta_realtime_update_result))
-                if delta_realtime_update_result == "SUCCESS":
+                should_send_realtime_update_email = False
+                for category_code in delta_realtime_update_result:
+                    if delta_realtime_update_result[category_code] == "SUCCESS":
+                        should_send_realtime_update_email = True
+                if should_send_realtime_update_email:
                     try:
                         self.emailSender.send_realtime_update(locale_code)
                     except Exception:

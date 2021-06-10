@@ -46,7 +46,7 @@ class DeltaChecker:
             log_info("self.storage.child(cloud_path).download(path=local_path, filename=local_path) exception")
 
     def download_data_for_delta_check(self, category_code, timestamp_base, test_timestamp, locale_code):
-        path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path, timestamp_base, test_timestamp)
+        path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path(locale_code), timestamp_base, test_timestamp)
         if not os.path.isdir(path_to_local_dir):
             os.makedirs(path_to_local_dir)
         path_to_base_data_on_cloud = "{}/products/{}/{}".format(locale_code, timestamp_base, category_code)
@@ -114,7 +114,7 @@ class DeltaChecker:
             return self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).get().val()
 
         timestamp_base = get_realtime_delta_timestamp_base()
-        log_info("delta realtime check ({} -> {})".format(timestamp_base, timestamp_forward))
+        log_info("delta realtime check {} ({} -> {})".format(locale_code, timestamp_base, timestamp_forward))
         if not timestamp_base:
             self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).set(timestamp_forward)
             return "INIT"
@@ -145,30 +145,30 @@ class DeltaChecker:
                     sku = item_json['sku']
                     self.database.child(delta_db_path).child(category).child(type).child(sku).set(item_json)
                     if type == 'ADDED':
-                        self.database.child('product_updates').child(category).child(type).child(sku).set(item_json)
-                        self.database.child('product_updates').child(category).child(type).child(sku).child(
+                        self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).set(item_json)
+                        self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).child(
                             'time_added').set(timestamp_forward)
-                        if self.database.child('product_updates').child(category).child("REMOVED").child(sku).get().val():
-                            self.database.child('product_updates').child(category).child(type).child(sku).child(
+                        if self.database.child('{}/product_updates'.format(locale_code)).child(category).child("REMOVED").child(sku).get().val():
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).child(
                                 'is_restock').set(True)
-                            self.database.child('product_updates').child(category).child("REMOVED").child(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child("REMOVED").child(
                                 sku).remove()
                         else:
-                            self.database.child('product_updates').child(category).child(type).child(sku).child(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).child(
                                 'is_restock').set(False)
                     if type == 'REMOVED':
-                        if self.database.child('product_updates').child(category).child("ADDED").child(sku).get().val():
-                            item_detail = self.database.child('product_updates').child(
+                        if self.database.child('{}/product_updates'.format(locale_code)).child(category).child("ADDED").child(sku).get().val():
+                            item_detail = self.database.child('{}/product_updates'.format(locale_code)).child(
                                 category).child("ADDED").child(sku).get().val()
-                            time_added = get_datetime_from_string(self.database.child('product_updates').child(
+                            time_added = get_datetime_from_string(self.database.child('{}/product_updates'.format(locale_code)).child(
                                 category).child("ADDED").child(sku).child('time_added').get().val())
                             time_removed = get_datetime_from_string(timestamp_forward)
                             time_available_hours = (time_removed - time_added).total_seconds() / 3600
                             item_detail['time_removed'] = timestamp_forward
                             item_detail['time_available_hours'] = time_available_hours
-                            self.database.child('product_updates').child(category).child(type).child(sku).set(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).set(
                                 item_detail)
-                            self.database.child('product_updates').child(category).child("ADDED").child(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child("ADDED").child(
                                 sku).remove()
             check_delta_results[category] = "SUCCESS"
             delta_realtime_uploaded = True
@@ -176,8 +176,8 @@ class DeltaChecker:
         if delta_realtime_uploaded:
             self.database.child(delta_db_path).child("timestamp_base").set(timestamp_base)
             self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
-            self.database.child('{}/delta_realtime/last_update').set(update_stamp)
-            self.database.child('{}/delta_realtime/timestamp_base').set(locale_code, timestamp_forward)
+            self.database.child('{}/delta_realtime/last_update'.format(locale_code)).set(update_stamp)
+            self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).set(timestamp_forward)
         return check_delta_results
 
     def update_daily_delta_if_necessary(self, locale_code, timestamp_forward=None):
@@ -193,6 +193,7 @@ class DeltaChecker:
                 timestamp_base)).total_seconds() / 3600
             current_pst_hour = get_current_pst_time().hour
             in_time_window = current_pst_hour >= 16
+            log_info("current_pst_hour: {} hours_since_last_update: {}".format(current_pst_hour, hours_since_last_update))
             if in_time_window and hours_since_last_update >= 16:
                 return True
             else:
@@ -357,6 +358,7 @@ class DeltaChecker:
 # ]
 #
 # deltaChecker = DeltaChecker()
+# deltaChecker.update_realtime_delta("20210608_10_50_55", "us_en")
 # deltaChecker.upload_products_if_necessary("20210608_01_28_39", "us_en")
 # i = 0
 # while i < len(ts_list) - 1:

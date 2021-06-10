@@ -47,11 +47,11 @@ class Scraper:
         options = Options()
 
         # setup userAgent
-        software_names = [SoftwareName.CHROME.value]
-        operation_systems = [OperatingSystem.WINDOWS.name, OperatingSystem.LINUX.name]
-        user_agent_rotator = UserAgent(software_names=software_names, operation_systems=operation_systems, limit=100)
-        user_agent = user_agent_rotator.get_random_user_agent()
-        options.add_argument('user-agent={}'.format(user_agent))
+        # software_names = [SoftwareName.CHROME.value]
+        # operation_systems = [OperatingSystem.WINDOWS.name, OperatingSystem.LINUX.name]
+        # user_agent_rotator = UserAgent(software_names=software_names, operation_systems=operation_systems, limit=100)
+        # user_agent = user_agent_rotator.get_random_user_agent()
+        # options.add_argument('user-agent={}'.format(user_agent))
 
         # mute audio during cracking recapcha
         options.add_argument("--mute-audio")
