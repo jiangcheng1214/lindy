@@ -9,6 +9,9 @@ import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
 
+class SlowIPError(Exception):
+    pass
+
 def get_current_pst_format_timestamp():
     return datetime.now(tz=utc).astimezone(timezone('US/Pacific')).strftime("%Y%m%d_%H_%M_%S")
 
@@ -68,7 +71,8 @@ def supported_categories():
 
 
 def supported_locales():
-    return ['us_en', 'cn_zh', 'uk_en', 'de_de']
+    return ['cn_zh']
+    # return ['us_en', 'cn_zh', 'uk_en', 'de_de']
 
 
 def close_all_other_tabs(driver):

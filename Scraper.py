@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 import random
@@ -20,7 +21,7 @@ from seleniumwire import webdriver as seleniumwireWebdriver
 
 import constants
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp, wait_random, delete_dir
+    get_current_pst_format_timestamp, wait_random, delete_dir, SlowIPError
 
 CHROMEDRIVER_BIN_PATH = '/usr/local/bin/chromedriver'
 
@@ -47,11 +48,11 @@ class Scraper:
         options = Options()
 
         # setup userAgent
-        # software_names = [SoftwareName.CHROME.value]
-        # operation_systems = [OperatingSystem.WINDOWS.name, OperatingSystem.LINUX.name]
-        # user_agent_rotator = UserAgent(software_names=software_names, operation_systems=operation_systems, limit=100)
-        # user_agent = user_agent_rotator.get_random_user_agent()
-        # options.add_argument('user-agent={}'.format(user_agent))
+        software_names = [SoftwareName.CHROME.value]
+        operation_systems = [OperatingSystem.WINDOWS.name, OperatingSystem.LINUX.name]
+        user_agent_rotator = UserAgent(software_names=software_names, operation_systems=operation_systems, limit=100)
+        user_agent = user_agent_rotator.get_random_user_agent()
+        options.add_argument('user-agent={}'.format(user_agent))
 
         # mute audio during cracking recapcha
         options.add_argument("--mute-audio")
@@ -68,12 +69,16 @@ class Scraper:
 
         # setup proxy
         if on_proxy:
-            with open('credentials/proxy_config.json', 'r') as f:
-                proxy_option = json.load(f)
-                seleniumwire_options = proxy_option
-            self.driver = seleniumwireWebdriver.Chrome(CHROMEDRIVER_BIN_PATH,
-                                                       seleniumwire_options=seleniumwire_options,
-                                                       options=options)
+            # with open('credentials/proxy_config.json', 'r') as f:
+            #     proxy_option = json.load(f)
+            #     seleniumwire_options = proxy_option
+            # self.driver = seleniumwireWebdriver.Chrome(CHROMEDRIVER_BIN_PATH,
+            #                                            seleniumwire_options=seleniumwire_options,
+            #                                            options=options)
+
+            PROXY = "192.151.150.174:2000"
+            options.add_argument('--proxy-server={}'.format(PROXY))
+            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
@@ -320,6 +325,13 @@ class Scraper:
     def get_timestamp(self):
         return self.timestamp
 
+    def open_with_timeout(self, URL, timeout):
+        time_start = datetime.now()
+        self.driver.get(URL)
+        time_spent = (datetime.now() - time_start).total_seconds()
+        if time_spent > timeout:
+            raise SlowIPError("{} loading too slow. time spent: {}".format(URL, time_spent))
+
     def get_product_info(self, locale_code):
 
         def get_product_info_from_category(category, retry=0):
@@ -334,8 +346,9 @@ class Scraper:
             attempt = 0
             while attempt < 3:
                 attempt += 1
+                log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
-                wait_random(3, 4)
+                wait_random(1, 2)
                 if not self.is_blocked():
                     blocked = False
                     break
@@ -436,10 +449,40 @@ class Scraper:
     def print_ip(self):
         try:
             self.driver.get('https://api.ipify.org/')
+            log_info("checking ip")
+            WebDriverWait(self.driver, 2).until(expected_conditions.presence_of_element_located(
+                (By.XPATH, '//html/body/pre')))
             detected_ip = self.driver.find_element_by_xpath('//html/body/pre').text
-            print('ip: {}'.format(detected_ip))
+            log_info('ip: {}'.format(detected_ip))
         except Exception:
-            print('print_ip exception')
+            log_info('print_ip exception')
+            raise SlowIPError("proxy slow")
 
     def terminate(self):
         self.driver.quit()
+
+
+# port = 20001
+# while port <= 20300:
+# scraper = Scraper(on_proxy=True, headless=True)
+# scraper.terminate()
+#     port += 1
+
+# def thread_function(port):
+#     scraper = Scraper(port, on_proxy=True, headless=True)
+#     scraper.terminate()
+#
+# t = threading.Thread(target=thread_function, args=(20001,))
+# t.start()
+
+# port = 20001
+# threads = []
+# while port <= 20100:
+#     for p in range(port, port+20):
+#         t = threading.Thread(target=thread_function, args=(p,))
+#         t.start()
+#         threads.append(t)
+#     for t in threads:
+#         t.join()
+#     threads = []
+#     port += 20

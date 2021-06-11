@@ -31,10 +31,11 @@ class ScrapeTask:
         self.firebase = pyrebase.initialize_app(credentials)
         self.database = self.firebase.database()
         self.emailSender = EmailSender()
+        self.scraper = Scraper(on_proxy=on_proxy, headless=not debug)
 
     def start(self):
-        log_warning("Starting new scraper instance..")
-        scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
+        log_info("Starting new scraper instance..")
+
         index = 0
         scrape_flag = None
         locale_list = supported_locales()
@@ -42,10 +43,11 @@ class ScrapeTask:
             locale_code = locale_list[index % len(locale_list)]
             remove_temp_dir(locale_code)
             start_time = get_current_pst_time()
-            scraper.get_product_info(locale_code)
+            self.scraper.get_product_info(locale_code)
             last_scrape_flag = scrape_flag
-            scrape_flag, scrape_results = scraper.scrape_result()
-            scraper_timestamp = scraper.get_timestamp()
+            self.scraper.open_with_timeout("https://www.google.com/", 10)
+            scrape_flag, scrape_results = self.scraper.scrape_result()
+            scraper_timestamp = self.scraper.get_timestamp()
             database_log_prefix = '{}/logs/task/{}/{}'.format(locale_code, scraper_timestamp[:8], scraper_timestamp[9:])
             self.database.child('{}/scrape'.format(database_log_prefix)).set(scrape_flag)
             if scrape_flag not in self.results_dict:
@@ -59,9 +61,9 @@ class ScrapeTask:
                     self.database.child(
                         '{}/logs/key_timestamps/{}/{}'.format(locale_code, scraper_timestamp[:8], scraper_timestamp[9:])).set(
                         scrape_flag)
-                scraper.terminate()
+                self.scraper.terminate()
                 log_warning("Starting new scraper instance..")
-                scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
+                self.scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
             else:
                 if not last_scrape_flag:
                     self.database.child(
@@ -111,7 +113,7 @@ class ScrapeTask:
                                                 delta_daily_update_result))
 
             if last_scrape_flag == "BLOCKED" and scrape_flag == "BLOCKED":
-                scraper.terminate()
+                self.scraper.terminate()
                 raise Exception("Scraper is Blocked")
                 break
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
@@ -119,3 +121,7 @@ class ScrapeTask:
             if time_until_next_scrape > 0:
                 time.sleep(time_until_next_scrape)
             index += 1
+
+
+    def terminate_scraper(self):
+        self.scraper.terminate()
