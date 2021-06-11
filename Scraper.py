@@ -9,7 +9,8 @@ from Utils import log_exception, log_info, create_empty_file, log_warning, suppo
     get_current_pst_format_timestamp, wait_random, delete_dir
 import pydub
 import speech_recognition as sr
-from seleniumwire import webdriver
+from seleniumwire import webdriver as proxy_webdriver
+from selenium import webdriver
 from random_user_agent.params import SoftwareName, OperatingSystem
 from random_user_agent.user_agent import UserAgent
 from selenium.webdriver.chrome.options import Options
@@ -68,11 +69,11 @@ class Scraper:
             with open('credentials/proxy_config.json', 'r') as f:
                 proxy_option = json.load(f)
                 seleniumwire_options = proxy_option
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
+            self.driver = proxy_webdriver.Chrome(CHROMEDRIVER_BIN_PATH, seleniumwire_options=seleniumwire_options,
                                            options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        # self.print_ip()
+        self.print_ip()
         self.locale_code = locale_code
         self.category_codes = supported_categories()
 
@@ -464,15 +465,13 @@ class Scraper:
             flag = "BLOCKED"
         return flag, results
 
-    '''
     def print_ip(self):
         try:
             self.driver.get('https://api.ipify.org/')
             detected_ip = self.driver.find_element_by_xpath('//html/body/pre').text
             print('ip: {}'.format(detected_ip))
-        except:
+        except Exception:
             print('print_ip exception')
-    '''
 
     def get_timestamp(self):
         return self.timestamp
