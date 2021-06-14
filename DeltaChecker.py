@@ -2,10 +2,38 @@ import json
 import os
 
 import pyrebase
+import firebase_admin
+from firebase_admin import storage, credentials
 
 from Utils import log_info, log_warning, supported_categories, log_exception, get_current_pst_format_date, \
     get_datetime_from_string, get_current_pst_format_year_month, get_current_pst_time
 
+service_account_credentials = credentials.Certificate('credentials/firebase_service_account_credentials.json')
+with open('credentials/firebase_credentials.json', 'r') as f:
+    firebase_credentials = json.load(f)
+firebase_admin.initialize_app(service_account_credentials, firebase_credentials)
+
+class StorageFileTransformer:
+    def __init__(self):
+        self.bucket = storage.bucket()
+
+    def upload(self, destination_path, from_path):
+        try:
+            log_info("Uploading {} -> {}".format(from_path, destination_path))
+            blob = self.bucket.blob(destination_path)
+            blob.upload_from_filename(from_path)
+            log_info("Uploaded.")
+        except Exception as s:
+            log_exception(s)
+
+    # def download(self, destination_path, from_path):
+    #     try:
+    #         log_info("Downloading {} -> {}".format(from_path, destination_path))
+    #         blob = self.bucket.blob(from_path)
+    #         blob.download_to_filename(destination_path)
+    #         log_info("Downloaded.")
+    #     except Exception as s:
+    #         log_exception(s)
 
 class DeltaChecker:
     def __init__(self):
@@ -20,6 +48,7 @@ class DeltaChecker:
         self.database = self.firebase.database()
         self.scraped_data_dir_path = os.path.join(os.getcwd(), 'temp', 'scraper')
         self.forward_data_dir_path = os.path.join(os.getcwd(), 'temp', 'forward')
+        self.fileTransformer = StorageFileTransformer()
 
     def get_timestamp_scraped_forward(self):
         return self.database.child('timestamp_scraped_forward').get().val()
@@ -314,7 +343,7 @@ class DeltaChecker:
             for category_code in supported_categories():
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
                 cloud_local_test_file_path = 'products/{}/{}'.format(timestamp, category_code)
-                self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
+                self.fileTransformer.upload(cloud_local_test_file_path, local_test_file_path)
                 log_info("{} has been uploaded to {}".format(local_test_file_path, cloud_local_test_file_path))
         except Exception:
             log_exception(
@@ -323,6 +352,10 @@ class DeltaChecker:
         self.update_timestamp_scraped_forward(timestamp)
         return "SUCCESS"
 
+# ft = StorageFileTransformer()
+# ft.download("/Users/chengjiang/Dev/lindy/temp/forward/20210614_14_44_02/BIJOUTERIE", "products/20210614_14_44_02/BIJOUTERIE")
+# ft.upload("test/file", "temp/delta/20210613_16_28_56_to_20210614_14_46_07/20210613_16_28_56_BIJOUTERIE")
+# ft.download("/Users/chengjiang/Dev/lindy/temp/file", "test/file")
 
 '''Daily Delta'''
 # ts_list = [
@@ -341,6 +374,7 @@ class DeltaChecker:
 # ]
 #
 # deltaChecker = DeltaChecker()
+# deltaChecker.download("products/20210614_14_44_02/BIJOUTERIE", "/Users/chengjiang/Dev/lindy/temp/BIJOUTERIE")
 # i = 0
 # while i < len(ts_list) - 1:
 #     deltaChecker.update_realtime_delta(timestamp_base=ts_list[i+1], timestamp_forward=ts_list[i], should_update_timestamp=False)
