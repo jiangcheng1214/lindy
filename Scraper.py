@@ -17,7 +17,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
-from seleniumwire import webdriver as seleniumwireWebdriver
 
 import constants
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
@@ -69,12 +68,11 @@ class Scraper:
 
         # setup proxy
         if on_proxy:
-            with open('credentials/proxy_config.json', 'r') as f:
-                proxy_option = json.load(f)
-                seleniumwire_options = proxy_option
-            self.driver = seleniumwireWebdriver.Chrome(CHROMEDRIVER_BIN_PATH,
-                                                       seleniumwire_options=seleniumwire_options,
-                                                       options=options)
+            # TODO:
+            # with open('credentials/proxy_config.json', 'r') as f:
+            #     proxy_option = json.load(f)
+            #     seleniumwire_options = proxy_option
+            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
 
             # PROXY = "192.151.150.174:2000"
             # options.add_argument('--proxy-server={}'.format(PROXY))
