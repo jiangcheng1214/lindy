@@ -69,16 +69,16 @@ class Scraper:
 
         # setup proxy
         if on_proxy:
-            # with open('credentials/proxy_config.json', 'r') as f:
-            #     proxy_option = json.load(f)
-            #     seleniumwire_options = proxy_option
-            # self.driver = seleniumwireWebdriver.Chrome(CHROMEDRIVER_BIN_PATH,
-            #                                            seleniumwire_options=seleniumwire_options,
-            #                                            options=options)
+            with open('credentials/proxy_config.json', 'r') as f:
+                proxy_option = json.load(f)
+                seleniumwire_options = proxy_option
+            self.driver = seleniumwireWebdriver.Chrome(CHROMEDRIVER_BIN_PATH,
+                                                       seleniumwire_options=seleniumwire_options,
+                                                       options=options)
 
-            PROXY = "192.151.150.174:2000"
-            options.add_argument('--proxy-server={}'.format(PROXY))
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+            # PROXY = "192.151.150.174:2000"
+            # options.add_argument('--proxy-server={}'.format(PROXY))
+            # self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         else:
             self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()

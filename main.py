@@ -1,12 +1,12 @@
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
-# i = 0
 from Utils import SlowIPError, log_exception
 
-while 1:
-    # i += 1
+i = 0
+while i < 5:
+    i += 1
     try:
-        task = ScrapeTask(interval_seconds=60*1, debug=False, on_proxy=True)
+        task = ScrapeTask(interval_seconds=60*3, debug=False, on_proxy=False)
         task.start()
     except SlowIPError as e:
         log_exception(e)

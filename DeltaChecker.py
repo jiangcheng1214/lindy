@@ -2,6 +2,7 @@ import json
 import os
 
 import pyrebase
+from firebase import Firebase
 
 from Utils import log_info, log_warning, supported_categories, log_exception, get_current_pst_format_date, \
     get_datetime_from_string, get_current_pst_format_year_month, get_current_pst_time
@@ -34,6 +35,7 @@ class DeltaChecker:
         self.database.child('{}/timestamp_scraped_forward'.format(locale_code)).set(timestamp)
 
     def download(self, cloud_path, local_path):
+        log_info("download. cloud_path: {} local_path: {}".format(cloud_path, local_path))
         try:
             self.storage.child(cloud_path).download(filename=local_path)
             return
@@ -46,6 +48,7 @@ class DeltaChecker:
             log_info("self.storage.child(cloud_path).download(path=local_path, filename=local_path) exception")
 
     def download_data_for_delta_check(self, category_code, timestamp_base, test_timestamp, locale_code):
+        log_info("download_data_for_delta_check: timestamp_base: {} test_timestamp: {}".format(timestamp_base, test_timestamp))
         path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path(locale_code), timestamp_base, test_timestamp)
         if not os.path.isdir(path_to_local_dir):
             os.makedirs(path_to_local_dir)
@@ -69,8 +72,10 @@ class DeltaChecker:
                     return False
             return True
 
+        log_info("Start getting delta info. timestamp_base: {} timestamp_forward: {}".format(timestamp_base, timestamp_forward))
         data_dir_path = self.download_data_for_delta_check(category, timestamp_base, timestamp_forward, locale_code)
         if not data_dir_path:
+            log_info("Failed to download! {}".format(data_dir_path))
             return None
         all_base_data = {}
         all_test_data = {}
@@ -109,11 +114,12 @@ class DeltaChecker:
         log_info("updated items count: {}".format(len(updated_items)))
         return {"ADDED": added_items, "REMOVED": removed_items, "UPDATED": updated_items}
 
-    def update_realtime_delta(self, timestamp_forward, locale_code):
+    def update_realtime_delta(self, locale_code, timestamp_forward, timestamp_base=None):
         def get_realtime_delta_timestamp_base():
             return self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).get().val()
 
-        timestamp_base = get_realtime_delta_timestamp_base()
+        if not timestamp_base:
+            timestamp_base = get_realtime_delta_timestamp_base()
         log_info("delta realtime check {} ({} -> {})".format(locale_code, timestamp_base, timestamp_forward))
         if not timestamp_base:
             self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).set(timestamp_forward)
@@ -174,6 +180,7 @@ class DeltaChecker:
             delta_realtime_uploaded = True
 
         if delta_realtime_uploaded:
+            log_info("updating realtime delta: {}".format(delta_info))
             self.database.child(delta_db_path).child("timestamp_base").set(timestamp_base)
             self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
             self.database.child('{}/delta_realtime/last_update'.format(locale_code)).set(update_stamp)
@@ -193,7 +200,7 @@ class DeltaChecker:
                 timestamp_base)).total_seconds() / 3600
             current_pst_hour = get_current_pst_time().hour
             in_time_window = current_pst_hour >= 16
-            log_info("current_pst_hour: {} hours_since_last_update: {}".format(current_pst_hour, hours_since_last_update))
+            log_info("should_update? current_pst_hour: {} hours_since_last_update: {}".format(current_pst_hour, hours_since_last_update))
             if in_time_window and hours_since_last_update >= 16:
                 return True
             else:
@@ -214,7 +221,7 @@ class DeltaChecker:
         daily_delta_db_path = "{}/delta_daily/{}/{}".format(locale_code, get_current_pst_format_year_month(), date_today)
         if self.database.child(daily_delta_db_path).get().val():
             log_warning("daily delta already existed: {}".format(daily_delta_db_path))
-            return "DAILY_DELTA_EXISTED"
+            return "SUCCESS"
         log_info("checking delta timestamp_base: {} timestamp_forward: {}".format(timestamp_base, timestamp_forward))
         if timestamp_base == timestamp_forward:
             log_info("skip delta check (timestamp_base equals to timestamp_forward)")
@@ -358,7 +365,7 @@ class DeltaChecker:
 # ]
 #
 # deltaChecker = DeltaChecker()
-# deltaChecker.update_realtime_delta("20210608_10_50_55", "us_en")
+# deltaChecker.update_realtime_delta("cn_zh", "20210611_17_12_58", "20210611_16_05_14")
 # deltaChecker.upload_products_if_necessary("20210608_01_28_39", "us_en")
 # i = 0
 # while i < len(ts_list) - 1:

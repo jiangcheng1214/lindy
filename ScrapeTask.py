@@ -74,7 +74,7 @@ class ScrapeTask:
                 log_info("updated product? : {}".format(products_upload_result))
                 self.database.child('{}/upload'.format(database_log_prefix)).set(products_upload_result)
                 log_info("delta update attempt started")
-                delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper_timestamp, locale_code)
+                delta_realtime_update_result = self.deltaChecker.update_realtime_delta(locale_code, scraper_timestamp)
                 log_info("delta updated? : {}".format(delta_realtime_update_result))
                 should_send_realtime_update_email = False
                 for category_code in delta_realtime_update_result:
@@ -83,8 +83,8 @@ class ScrapeTask:
                 if should_send_realtime_update_email:
                     try:
                         self.emailSender.send_realtime_update(locale_code)
-                    except Exception:
-                        log_info("Failed to send daily email!")
+                    except Exception as e:
+                        log_info("Failed to send realtime update email! {}".format(e))
                 self.database.child('{}/delta_realtime'.format(database_log_prefix)).set(delta_realtime_update_result)
                 delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary(locale_code)
                 log_info("delta daily updated? : {}".format(delta_daily_update_result))
@@ -93,7 +93,7 @@ class ScrapeTask:
                     try:
                         self.emailSender.send_daily_update(get_current_pst_format_date(), locale_code)
                     except Exception:
-                        log_info("Failed to send daily email!")
+                        log_info("Failed to send daily email! {}".format(e))
             time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
             self.database.child('{}/time_used'.format(database_log_prefix)).set(time_used_in_seconds)
             log_info("==========\n"
