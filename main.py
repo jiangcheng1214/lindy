@@ -1,3 +1,5 @@
+import sys
+
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from Utils import SlowIPError, log_exception
@@ -15,3 +17,5 @@ while i < 5:
         email_sender = EmailSender()
         email_sender.notice_admins_on_exception(e)
         task.terminate_scraper()
+
+sys.exit(-1)
