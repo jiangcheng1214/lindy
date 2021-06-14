@@ -4,8 +4,6 @@ from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from Utils import wait_random
 
-sys.exit(-1)
-
 retry = 0
 retry_limit = 2
 while retry < retry_limit:
@@ -18,3 +16,4 @@ while retry < retry_limit:
         retry += 1
         wait_random(2, 3)
 
+sys.exit(-1)

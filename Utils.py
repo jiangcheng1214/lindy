@@ -68,16 +68,6 @@ def supported_categories():
     return ['WOMENBAGSSMALLLEATHERGOODS', 'BIJOUTERIE', 'MENBAGSSMALLLEATHERGOODS']
 
 
-def close_all_other_tabs(driver):
-    cur = driver.current_window_handle
-    for handle in driver.window_handles:
-        wait_random(0.5, 1)
-        driver.switch_to.window(handle)
-        if handle != cur:
-            driver.close()
-    driver.switch_to.window(cur)
-
-
 def delete_dir(path):
     if os.path.exists(path) and os.path.isdir(path):
         log_info("removing dir: {}".format(path))

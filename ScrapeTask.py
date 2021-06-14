@@ -6,7 +6,7 @@ import time
 import pyrebase
 
 from DeltaChecker import DeltaChecker
-from EmailSender import EmailSender
+# from EmailSender import EmailSender
 from Scraper import Scraper
 from Utils import supported_categories, log_info, get_current_pst_time, get_current_pst_format_date
 
@@ -24,7 +24,7 @@ class ScrapeTask:
             credentials = json.load(f)
         self.firebase = pyrebase.initialize_app(credentials)
         self.database = self.firebase.database()
-        self.emailSender = EmailSender()
+        # self.emailSender = EmailSender()
 
     def start(self):
         def cleanup():
@@ -49,8 +49,8 @@ class ScrapeTask:
                 self.results_dict[scrape_flag] = 0
             self.results_dict[scrape_flag] += 1
             products_upload_result = {}
-            delta_realtime_update_result = {}
-            delta_daily_update_result = {}
+            # delta_realtime_update_result = {}
+            # delta_daily_update_result = {}
             if scrape_flag != "SUCCESS":
                 if last_scrape_flag != "BLOCKED" and scrape_flag == "BLOCKED":
                     self.database.child(
@@ -67,18 +67,19 @@ class ScrapeTask:
                 products_upload_result = self.deltaChecker.upload_products_if_necessary(timestamp=scraper_timestamp)
                 log_info("updated product? : {}".format(products_upload_result))
                 self.database.child('{}/upload'.format(database_log_prefix)).set(products_upload_result)
-                log_info("delta update attempt started")
-                delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper_timestamp)
-                log_info("delta updated? : {}".format(delta_realtime_update_result))
-                self.database.child('{}/delta_realtime'.format(database_log_prefix)).set(delta_realtime_update_result)
-                delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary()
-                log_info("delta daily updated? : {}".format(delta_daily_update_result))
-                self.database.child('{}/delta_daily'.format(database_log_prefix)).set(delta_daily_update_result)
-                if delta_daily_update_result == "SUCCESS":
-                    try:
-                        self.emailSender.send_daily_update(get_current_pst_format_date())
-                    except:
-                        log_info("Failed to send daily email!")
+
+                # log_info("delta update attempt started")
+                # delta_realtime_update_result = self.deltaChecker.update_realtime_delta(scraper_timestamp)
+                # log_info("delta updated? : {}".format(delta_realtime_update_result))
+                # self.database.child('{}/delta_realtime'.format(database_log_prefix)).set(delta_realtime_update_result)
+                # delta_daily_update_result = self.deltaChecker.update_daily_delta_if_necessary()
+                # log_info("delta daily updated? : {}".format(delta_daily_update_result))
+                # self.database.child('{}/delta_daily'.format(database_log_prefix)).set(delta_daily_update_result)
+                # if delta_daily_update_result == "SUCCESS":
+                #     try:
+                #         self.emailSender.send_daily_update(get_current_pst_format_date())
+                #     except:
+                #         log_info("Failed to send daily email!")
             time_used_in_seconds = (get_current_pst_time() - start_time).total_seconds()
             self.database.child('{}/time_used'.format(database_log_prefix)).set(time_used_in_seconds)
             time_until_next_scrape = self.interval_seconds - time_used_in_seconds
@@ -87,15 +88,11 @@ class ScrapeTask:
                      "  timestamp: {}\n"
                      "  time_used: {}\n"
                      "  scrape_results: {}\n"
-                     "  products_upload: {}\n"
-                     "  delta_realtime: {}\n"
-                     "  delta_daily: {}".format(index,
+                     "  products_upload: {}".format(index,
                                                 scraper_timestamp,
                                                 time_used_in_seconds,
                                                 scrape_results,
-                                                products_upload_result,
-                                                delta_realtime_update_result,
-                                                delta_daily_update_result))
+                                                products_upload_result,))
             log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
             if index == self.iterations:
                 scraper.terminate()
