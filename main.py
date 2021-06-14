@@ -1,6 +1,10 @@
+import sys
+
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from Utils import wait_random
+
+sys.exit(-1)
 
 retry = 0
 retry_limit = 2
@@ -13,3 +17,4 @@ while retry < retry_limit:
         emailSender.notice_admins_on_exception(e, retry)
         retry += 1
         wait_random(2, 3)
+
