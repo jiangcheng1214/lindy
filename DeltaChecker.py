@@ -275,7 +275,7 @@ class DeltaChecker:
                     self.database.child(daily_delta_db_path).child(category).child(type).child(sku).set(item_json)
             check_delta_results[category] = "SUCCESS"
 
-        self.database.child('{}/delta_daily/timestamp_base').set(locale_code, timestamp_forward)
+        self.database.child('{}/delta_daily/timestamp_base'.format(locale_code)).set(timestamp_forward)
         self.database.child(daily_delta_db_path).child("timestamp_base").set(timestamp_base)
         self.database.child(daily_delta_db_path).child("timestamp_forward").set(timestamp_forward)
         return "SUCCESS"
@@ -394,6 +394,7 @@ class DeltaChecker:
 # ]
 #
 # deltaChecker = DeltaChecker()
+# print(deltaChecker.update_daily_delta_if_necessary("us_en"))
 # deltaChecker.update_realtime_delta("cn_zh", "20210611_17_12_58", "20210611_16_05_14")
 # deltaChecker.upload_products_if_necessary("20210608_01_28_39", "us_en")
 # i = 0
