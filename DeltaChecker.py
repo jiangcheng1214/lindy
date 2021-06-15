@@ -114,10 +114,12 @@ class DeltaChecker:
         log_info("updated items count: {}".format(len(updated_items)))
         return {"ADDED": added_items, "REMOVED": removed_items, "UPDATED": updated_items}
 
-    def update_realtime_delta(self, locale_code, timestamp_forward, timestamp_base=None):
+    def update_realtime_delta_if_necessary(self, locale_code, timestamp_forward=None, timestamp_base=None):
         def get_realtime_delta_timestamp_base():
             return self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).get().val()
 
+        if not timestamp_forward:
+            timestamp_forward = self.get_timestamp_scraped_forward(locale_code)
         if not timestamp_base:
             timestamp_base = get_realtime_delta_timestamp_base()
         log_info("delta realtime check {} ({} -> {})".format(locale_code, timestamp_base, timestamp_forward))
@@ -131,19 +133,17 @@ class DeltaChecker:
 
         update_stamp = "{}_to_{}".format(timestamp_base, timestamp_forward)
         delta_db_path = "{}/delta_realtime/{}/{}".format(locale_code, timestamp_base[:6], update_stamp)
-        check_delta_results = {}
+        check_delta_result = "SKIP"
         delta_realtime_uploaded = False
         for category in supported_categories():
             delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward, locale_code)
             if not delta_info:
                 log_info("no delta info found")
-                check_delta_results[category] = "SKIP"
                 continue
             if len(delta_info["ADDED"]) + len(delta_info["REMOVED"]) + len(delta_info["UPDATED"]) == 0:
                 log_info("no added/removed/updated items detected from {} to {} for {}".format(timestamp_base,
                                                                                                timestamp_forward,
                                                                                                category))
-                check_delta_results[category] = "SKIP"
                 continue
 
             for type in delta_info:
@@ -176,7 +176,7 @@ class DeltaChecker:
                                 item_detail)
                             self.database.child('{}/product_updates'.format(locale_code)).child(category).child("ADDED").child(
                                 sku).remove()
-            check_delta_results[category] = "SUCCESS"
+            check_delta_result = "SUCCESS"
             delta_realtime_uploaded = True
 
         if delta_realtime_uploaded:
@@ -185,15 +185,12 @@ class DeltaChecker:
             self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
             self.database.child('{}/delta_realtime/last_update'.format(locale_code)).set(update_stamp)
             self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).set(timestamp_forward)
-        return check_delta_results
+        return check_delta_result
 
     def update_daily_delta_if_necessary(self, locale_code, timestamp_forward=None):
 
         def get_daily_delta_timestamp_base():
             return self.database.child('{}/delta_daily/timestamp_base'.format(locale_code)).get().val()
-
-        def get_timestamp_scraped_forward():
-            return self.database.child('{}/timestamp_scraped_forward'.format(locale_code)).get().val()
 
         def should_update(timestamp_base, timestamp_forward):
             hours_since_last_update = (get_datetime_from_string(timestamp_forward) - get_datetime_from_string(
@@ -207,7 +204,7 @@ class DeltaChecker:
                 return False
 
         if not timestamp_forward:
-            timestamp_forward = get_timestamp_scraped_forward()
+            timestamp_forward = self.get_timestamp_scraped_forward(locale_code)
         timestamp_base = get_daily_delta_timestamp_base()
         if not timestamp_base:
             self.database.child('{}/delta_daily/timestamp_base'.format(locale_code)).set(timestamp_forward)

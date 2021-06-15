@@ -2,11 +2,12 @@ import sys
 
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
+from UpdateTask import UpdateTask
 from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException, timeout, TimeoutError
 
 
 @timeout(3600 * 4)
-def scrape_backup():
+def scrape_backup(local_code, job_type):
     blocked = False
     while not blocked:
         try:
@@ -30,7 +31,7 @@ def scrape_backup():
             task.terminate_scraper()
 
 
-def scrape():
+def scrape(local_code, job_type):
     blocked = False
     while not blocked:
         try:
@@ -49,6 +50,16 @@ def scrape():
             task.terminate_scraper()
 
 
+def update(local_code, job_type):
+    try:
+        task = UpdateTask(local_code)
+        task.start()
+    except Exception as e:
+        log_exception(e)
+        email_sender = EmailSender()
+        email_sender.notice_admins_on_exception(e, local_code, job_type)
+
+
 n = len(sys.argv)
 print("Total arguments passed:", n)
 print("arguments passed:", sys.argv)
@@ -61,12 +72,11 @@ if local_code not in supported_locales():
 job_type = sys.argv[2]
 
 if job_type == "scraping":
-    scrape()
+    scrape(local_code, job_type)
 elif job_type == "backup_scraping":
-    scrape_backup()
+    scrape_backup(local_code, job_type)
 elif job_type == "updating":
-    # TODO:
-    pass
+    update(local_code, job_type)
 else:
     print("job_type {} is not supported.".format(job_type))
 sys.exit(-1)
