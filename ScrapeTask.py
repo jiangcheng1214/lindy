@@ -19,11 +19,12 @@ def remove_temp_dir(locale_code):
 
 
 class ScrapeTask:
-    def __init__(self, interval_seconds=60, debug=False, on_proxy=False):
+    def __init__(self, local_code, interval_seconds=60, debug=False, on_proxy=False):
         self.category_codes = supported_categories()
         self.results_dict = {}
         self.interval_seconds = interval_seconds
         self.debug = debug
+        self.local_code = local_code
         self.deltaChecker = DeltaChecker()
         self.on_proxy = on_proxy
         with open('credentials/firebase_credentials.json', 'r') as f:
@@ -38,17 +39,15 @@ class ScrapeTask:
 
         index = 0
         scrape_flag = None
-        locale_list = supported_locales()
         while 1:
-            locale_code = locale_list[index % len(locale_list)]
-            remove_temp_dir(locale_code)
+            remove_temp_dir(self.local_code)
             start_time = get_current_pst_time()
-            self.scraper.get_product_info(locale_code)
+            self.scraper.get_product_info(self.local_code)
             last_scrape_flag = scrape_flag
             self.scraper.open_with_timeout("https://www.google.com/", 10)
             scrape_flag, scrape_results = self.scraper.scrape_result()
             scraper_timestamp = self.scraper.get_timestamp()
-            database_log_prefix = '{}/logs/task/{}/{}'.format(locale_code, scraper_timestamp[:8], scraper_timestamp[9:])
+            database_log_prefix = '{}/logs/task/{}/{}'.format(self.local_code, scraper_timestamp[:8], scraper_timestamp[9:])
             self.database.child('{}/scrape'.format(database_log_prefix)).set(scrape_flag)
             if scrape_flag not in self.results_dict:
                 self.results_dict[scrape_flag] = 0
@@ -59,7 +58,7 @@ class ScrapeTask:
             if scrape_flag != "SUCCESS":
                 if last_scrape_flag != "BLOCKED" and scrape_flag == "BLOCKED":
                     self.database.child(
-                        '{}/logs/key_timestamps/{}/{}'.format(locale_code, scraper_timestamp[:8],
+                        '{}/logs/key_timestamps/{}/{}'.format(self.local_code, scraper_timestamp[:8],
                                                               scraper_timestamp[9:])).set(
                         scrape_flag)
                 self.scraper.terminate()
@@ -68,11 +67,11 @@ class ScrapeTask:
             else:
                 if not last_scrape_flag:
                     self.database.child(
-                        '{}/logs/key_timestamps/{}/{}'.format(locale_code, scraper_timestamp[:8],
+                        '{}/logs/key_timestamps/{}/{}'.format(self.local_code, scraper_timestamp[:8],
                                                               scraper_timestamp[9:])).set(
                         scrape_flag)
                 log_info("update products info attempt started")
-                products_upload_result = self.deltaChecker.upload_products_if_necessary(scraper_timestamp, locale_code)
+                products_upload_result = self.deltaChecker.upload_products_if_necessary(scraper_timestamp, self.local_code)
                 log_info("updated product? : {}".format(products_upload_result))
                 self.database.child('{}/upload'.format(database_log_prefix)).set(products_upload_result)
                 # log_info("delta update attempt started")
@@ -104,7 +103,7 @@ class ScrapeTask:
                      "  timestamp: {}\n"
                      "  time_used: {}\n"
                      "  scrape_results: {}\n"
-                     "  products_upload: {}".format(locale_code, index,
+                     "  products_upload: {}".format(self.local_code, index,
                                                     scraper_timestamp,
                                                     time_used_in_seconds,
                                                     scrape_results,

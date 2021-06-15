@@ -18,7 +18,7 @@ if job_type == "scraping":
     blocked = False
     while not blocked:
         try:
-            task = ScrapeTask(interval_seconds=60*3, debug=False, on_proxy=False)
+            task = ScrapeTask(local_code, interval_seconds=60*3, debug=False, on_proxy=False)
             task.start()
         except SlowIPException as e:
             log_exception(e)
@@ -28,7 +28,7 @@ if job_type == "scraping":
         except Exception as e:
             log_exception(e)
             email_sender = EmailSender()
-            email_sender.notice_admins_on_exception(e)
+            email_sender.notice_admins_on_exception(e, local_code, job_type)
         finally:
             task.terminate_scraper()
 elif job_type == "updating":
