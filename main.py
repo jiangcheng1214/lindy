@@ -16,9 +16,8 @@ def scrape_backup():
             log_exception(e)
         except BlockedIPException as e:
             log_exception(e)
-            if job_type == "backup_scraping":
-                email_sender = EmailSender()
-                email_sender.notice_admins_on_exception(e, local_code, job_type)
+            email_sender = EmailSender()
+            email_sender.notice_admins_on_exception(e, local_code, job_type)
             blocked = True
         except TimeoutError:
             print('timeout!')
@@ -41,9 +40,6 @@ def scrape():
             log_exception(e)
         except BlockedIPException as e:
             log_exception(e)
-            if job_type == "backup_scraping":
-                email_sender = EmailSender()
-                email_sender.notice_admins_on_exception(e, local_code, job_type)
             blocked = True
         except Exception as e:
             log_exception(e)
