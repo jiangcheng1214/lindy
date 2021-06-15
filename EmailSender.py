@@ -286,8 +286,8 @@ class EmailSender:
         print(response.body)
         print(response.headers)
 
-sender = EmailSender()
-sender.send_realtime_update('us_en')
+# sender = EmailSender()
+# sender.send_realtime_update('us_en')
 # sender.send_realtime_update("us_en", "20210607_22_08_58_to_20210607_23_09_00")
 # sender.send_realtime_update("us_en", "20210607_23_09_00_to_20210607_23_54_01")
 # sender.send_daily_update('20210611', 'cn_zh')
