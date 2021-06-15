@@ -132,5 +132,4 @@ dmypy.json
 dev/
 temp/
 data/
-credentials/
 logs/
