@@ -395,17 +395,20 @@ class Scraper:
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
                 self.driver.get(URL)
+                wait_random(1, 1.5)
+                if not self.driver.find_element_by_tag_name("pre"):
+                    log_exception("driver.find_element_by_tag_name(pre) returns nil")
+                    return get_product_info_from_category(category, retry + 1)
                 try:
-                    wait_random(1, 1.5)
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
-                    if 'total' not in response_json:
-                        log_exception("total is not a field of: {}".format(response_json))
-                        return get_product_info_from_category(category, retry + 1)
-                    if not response_json['products']['items']:
-                        break
                 except Exception:
                     log_exception("load json failed: {}".format(URL))
                     return get_product_info_from_category(category, retry + 1)
+                if 'total' not in response_json:
+                    log_exception("total is not a field of: {}".format(response_json))
+                    return get_product_info_from_category(category, retry + 1)
+                if not response_json['products']['items']:
+                    break
 
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:

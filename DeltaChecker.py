@@ -221,7 +221,7 @@ class DeltaChecker:
         daily_delta_db_path = "{}/delta_daily/{}/{}".format(locale_code, get_current_pst_format_year_month(), date_today)
         if self.database.child(daily_delta_db_path).get().val():
             log_warning("daily delta already existed: {}".format(daily_delta_db_path))
-            return "SUCCESS"
+            return "SKIP"
         log_info("checking delta timestamp_base: {} timestamp_forward: {}".format(timestamp_base, timestamp_forward))
         if timestamp_base == timestamp_forward:
             log_info("skip delta check (timestamp_base equals to timestamp_forward)")
