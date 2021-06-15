@@ -20,7 +20,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import constants
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp, wait_random, delete_dir, SlowIPError
+    get_current_pst_format_timestamp, wait_random, delete_dir, SlowIPException
 
 CHROMEDRIVER_BIN_PATH = '/usr/local/bin/chromedriver'
 
@@ -328,7 +328,7 @@ class Scraper:
         self.driver.get(URL)
         time_spent = (datetime.now() - time_start).total_seconds()
         if time_spent > timeout:
-            raise SlowIPError("{} loading too slow. time spent: {}".format(URL, time_spent))
+            raise SlowIPException("{} loading too slow. time spent: {}".format(URL, time_spent))
 
     def get_product_info(self, locale_code):
 
