@@ -13,6 +13,7 @@ with open('credentials/firebase_credentials.json', 'r') as f:
     firebase_credentials = json.load(f)
 firebase_admin.initialize_app(service_account_credentials, firebase_credentials)
 
+
 class StorageFileTransformer:
     def __init__(self):
         self.bucket = storage.bucket()
@@ -26,6 +27,15 @@ class StorageFileTransformer:
         except Exception as s:
             log_exception(s)
 
+    # def download(self, destination_path, from_path):
+    #     try:
+    #         log_info("Downloading {} -> {}".format(from_path, destination_path))
+    #         blob = self.bucket.blob(from_path)
+    #         blob.download_to_filename(destination_path)
+    #         log_info("Downloaded.")
+    #     except Exception as s:
+    #         log_exception(s)
+
 
 class DeltaChecker:
     def __init__(self):
@@ -34,6 +44,7 @@ class DeltaChecker:
         self.firebase = pyrebase.initialize_app(credentials)
         self.storage = self.firebase.storage()
         self.database = self.firebase.database()
+        self.fileTransformer = StorageFileTransformer()
 
     def temp_dir_path(self, locale_code):
         path = os.path.join(os.getcwd(), 'temp', locale_code, 'delta')
@@ -355,7 +366,7 @@ class DeltaChecker:
             for category_code in supported_categories():
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
                 cloud_local_test_file_path = '{}/products/{}/{}'.format(locale_code, timestamp, category_code)
-                self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
+                self.fileTransformer.upload(cloud_local_test_file_path, local_test_file_path)
                 log_info("{} has been uploaded to {}".format(local_test_file_path, cloud_local_test_file_path))
                 # workaround to make sure file is uploaded (pyrebase uploads folder accidentally instead)
                 self.storage.child(cloud_local_test_file_path).put(local_test_file_path)

@@ -7,3 +7,4 @@ pydub==0.25.1
 pytz==2021.1
 sendgrid==6.7.0
 random_user_agent==1.0.1
+firebase-admin==5.0.0
