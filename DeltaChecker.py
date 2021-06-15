@@ -1,11 +1,30 @@
 import json
 import os
 
+import firebase_admin
 import pyrebase
-from firebase import Firebase
+from firebase_admin import storage, credentials
 
 from Utils import log_info, log_warning, supported_categories, log_exception, get_current_pst_format_date, \
     get_datetime_from_string, get_current_pst_format_year_month, get_current_pst_time
+
+service_account_credentials = credentials.Certificate('credentials/firebase_service_account_credentials.json')
+with open('credentials/firebase_credentials.json', 'r') as f:
+    firebase_credentials = json.load(f)
+firebase_admin.initialize_app(service_account_credentials, firebase_credentials)
+
+class StorageFileTransformer:
+    def __init__(self):
+        self.bucket = storage.bucket()
+
+    def upload(self, destination_path, from_path):
+        try:
+            log_info("Uploading {} -> {}".format(from_path, destination_path))
+            blob = self.bucket.blob(destination_path)
+            blob.upload_from_filename(from_path)
+            log_info("Uploaded.")
+        except Exception as s:
+            log_exception(s)
 
 
 class DeltaChecker:
@@ -135,8 +154,10 @@ class DeltaChecker:
         delta_db_path = "{}/delta_realtime/{}/{}".format(locale_code, timestamp_base[:6], update_stamp)
         check_delta_result = "SKIP"
         delta_realtime_uploaded = False
+        total_delta_info = {}
         for category in supported_categories():
             delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward, locale_code)
+            total_delta_info[category] = delta_info
             if not delta_info:
                 log_info("no delta info found")
                 continue
@@ -180,7 +201,7 @@ class DeltaChecker:
             delta_realtime_uploaded = True
 
         if delta_realtime_uploaded:
-            log_info("updating realtime delta: {}".format(delta_info))
+            log_info("updating realtime delta: {}".format(total_delta_info))
             self.database.child(delta_db_path).child("timestamp_base").set(timestamp_base)
             self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
             self.database.child('{}/delta_realtime/last_update'.format(locale_code)).set(update_stamp)
@@ -370,7 +391,8 @@ class DeltaChecker:
 #     i += 1
 #
 # deltaChecker.update_daily_delta()
-# deltaChecker = DeltaChecker()
+deltaChecker = DeltaChecker()
+deltaChecker.update_realtime_delta_if_necessary('us_en', '20210615_09_39_18','20210615_09_09_17')
 # deltaChecker.upload_products_if_necessary("20210521_23_41_00")
 # deltaChecker.update_realtime_delta("20210521_23_41_00")
 # deltaChecker.update_daily_delta_if_necessary("20210525_16_49_14")
