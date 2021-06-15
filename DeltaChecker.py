@@ -391,8 +391,8 @@ class DeltaChecker:
 #     i += 1
 #
 # deltaChecker.update_daily_delta()
-deltaChecker = DeltaChecker()
-deltaChecker.update_realtime_delta_if_necessary('us_en', '20210615_09_39_18','20210615_09_09_17')
+# deltaChecker = DeltaChecker()
+# deltaChecker.update_realtime_delta_if_necessary('us_en', '20210615_09_39_18','20210615_09_09_17')
 # deltaChecker.upload_products_if_necessary("20210521_23_41_00")
 # deltaChecker.update_realtime_delta("20210521_23_41_00")
 # deltaChecker.update_daily_delta_if_necessary("20210525_16_49_14")

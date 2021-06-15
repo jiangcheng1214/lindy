@@ -132,7 +132,7 @@ class EmailSender:
                                                                     category_code)
                         removed_item_html += item_html
             return removed_item_html.format(removed_item_count)
-        last_update_stamp = self.database.child("{}/delta_realtime/last_update").get().val()
+        last_update_stamp = self.database.child("{}/delta_realtime/last_update".format(locale_code)).get().val()
         delta_realtime_path = "{}/delta_realtime/{}/{}".format(locale_code, last_update_stamp[:6], last_update_stamp)
         print('sending email for {} real time update'.format(delta_realtime_path))
         realtime_delta_data = self.database.child(delta_realtime_path).get().val()
@@ -286,7 +286,8 @@ class EmailSender:
         print(response.body)
         print(response.headers)
 
-# sender = EmailSender()
+sender = EmailSender()
+sender.send_realtime_update('us_en')
 # sender.send_realtime_update("us_en", "20210607_22_08_58_to_20210607_23_09_00")
 # sender.send_realtime_update("us_en", "20210607_23_09_00_to_20210607_23_54_01")
 # sender.send_daily_update('20210611', 'cn_zh')
