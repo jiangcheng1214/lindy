@@ -72,7 +72,7 @@ class EmailSender:
                         <hr />
                         <p>{}</p>
                         <p>{} - <a href="{}">{}</a></p>
-                        <p>Price: ${}</p>
+                        <p>Price: {}</p>
                         {}
                         <p>Category: {}</p>
                         '''
@@ -108,7 +108,7 @@ class EmailSender:
                 <hr />
                 <p>{}</p>
                 <p><span style="text-decoration: line-through;">{} - <a href="{}">{}</a></span></p>
-                <p><span style="text-decoration: line-through;">Price: ${} </span>(SOLD OUT)</p>
+                <p><span style="text-decoration: line-through;">Price: {} </span>(SOLD OUT)</p>
                 {}
                 <p>Category: {}</p>
                 '''
@@ -190,7 +190,7 @@ class EmailSender:
                         <hr />
                         <p>{}</p>
                         <p>{} - <a href="{}">{}</a></p>
-                        <p>Price: ${}</p>
+                        <p>Price: {}</p>
                         {}
                         <p>Category: {}</p>
                         '''
@@ -226,7 +226,7 @@ class EmailSender:
                 <hr />
                 <p>{}</p>
                 <p><span style="text-decoration: line-through;">{} - <a href="{}">{}</a></span></p>
-                <p><span style="text-decoration: line-through;">Price: ${} </span>(SOLD OUT)</p>
+                <p><span style="text-decoration: line-through;">Price: {} </span>(SOLD OUT)</p>
                 {}
                 <p>Category: {}</p>
                 '''
