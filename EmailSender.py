@@ -90,7 +90,7 @@ class EmailSender:
                         added_item_count += 1
                         item = daily_delta_data[category_code]['ADDED'][sku]
                         item_html = added_product_template.format(image_html(item), added_item_count,
-                                                                  'https://www.hermes.com/us/en' + item['url'],
+                                                                  'https://www.hermes.com/{}'.format(locale_code) + item['url'],
                                                                   item['title'],
                                                                   item['price'],
                                                                   self.item_added_time_html_string(locale_code,
@@ -126,7 +126,7 @@ class EmailSender:
                         removed_item_count += 1
                         item = daily_delta_data[category_code]['REMOVED'][sku]
                         item_html = removed_product_template.format(image_html(item), removed_item_count,
-                                                                    'https://www.hermes.com/us/en' + item['url'],
+                                                                    'https://www.hermes.com/{}'.format(locale_code) + item['url'],
                                                                     item['title'],
                                                                     item['price'],
                                                                     self.item_removed_time_html_string(locale_code,
@@ -208,7 +208,7 @@ class EmailSender:
                         added_item_count += 1
                         item = daily_delta_data[category_code]['ADDED'][sku]
                         item_html = added_product_template.format(image_html(item), added_item_count,
-                                                                  'https://www.hermes.com/us/en' + item['url'],
+                                                                  'https://www.hermes.com/{}'.format(locale_code) + item['url'],
                                                                   item['title'],
                                                                   item['price'],
                                                                   self.item_added_time_html_string(locale_code,
@@ -244,7 +244,7 @@ class EmailSender:
                         removed_item_count += 1
                         item = daily_delta_data[category_code]['REMOVED'][sku]
                         item_html = removed_product_template.format(image_html(item), removed_item_count,
-                                                                    'https://www.hermes.com/us/en' + item['url'],
+                                                                    'https://www.hermes.com/{}'.format(locale_code) + item['url'],
                                                                     item['title'],
                                                                     item['price'],
                                                                     self.item_removed_time_html_string(locale_code,
