@@ -8,8 +8,7 @@ from Utils import SlowIPException, log_exception, supported_locales, BlockedIPEx
 
 @timeout(3600 * 4)
 def scrape_backup(local_code, job_type):
-    blocked = False
-    while not blocked:
+    while 1:
         try:
             task = ScrapeTask(local_code, interval_seconds=60 * 3, debug=False, on_proxy=False)
             task.start()
@@ -19,9 +18,9 @@ def scrape_backup(local_code, job_type):
             log_exception(e)
             email_sender = EmailSender()
             email_sender.notice_admins_on_exception(e, local_code, job_type)
-            blocked = True
-        except TimeoutError:
-            print('timeout!')
+            sys.exit(-1)
+        except TimeoutError as e:
+            log_exception(e)
             sys.exit(0)
         except Exception as e:
             log_exception(e)
