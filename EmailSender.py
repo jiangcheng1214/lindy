@@ -3,7 +3,7 @@ import json
 import pyrebase
 import sendgrid
 
-from Utils import supported_categories, get_current_pst_format_timestamp
+from Utils import supported_categories, get_current_pst_format_timestamp, flag_for_country
 
 
 class EmailSender:
@@ -58,7 +58,7 @@ class EmailSender:
 
         return ret
 
-    def send_realtime_update(self, locale_code):
+    def send_realtime_update(self, locale_code, last_update_stamp=None):
         def image_html(item):
             template = '''<img src="{}" height="150" />'''
             html = ''
@@ -97,7 +97,10 @@ class EmailSender:
                                                                                                    category_code, sku),
                                                                   category_code)
                         added_item_html += item_html
-            return added_item_html.format(added_item_count)
+            if added_item_count > 0:
+                return added_item_html.format(added_item_count)
+            else:
+                return ""
 
         def removed_products_html(locale_code, daily_delta_data):
             removed_item_html = '<h2>Sold out Items ({} in total):</h2>'
@@ -131,30 +134,41 @@ class EmailSender:
                                                                                                        sku),
                                                                     category_code)
                         removed_item_html += item_html
-            return removed_item_html.format(removed_item_count)
-        last_update_stamp = self.database.child("{}/delta_realtime/last_update".format(locale_code)).get().val()
+            if removed_item_count > 0:
+                return removed_item_html.format(removed_item_count)
+            else:
+                return ""
+
+        if not last_update_stamp:
+            last_update_stamp = self.database.child("{}/delta_realtime/last_update".format(locale_code)).get().val()
         delta_realtime_path = "{}/delta_realtime/{}/{}".format(locale_code, last_update_stamp[:6], last_update_stamp)
         print('sending email for {} real time update'.format(delta_realtime_path))
         realtime_delta_data = self.database.child(delta_realtime_path).get().val()
         if not realtime_delta_data:
             print("realtime delta not exists: {}".format(delta_realtime_path))
             return
-
+        added_products_html_string = added_products_html(locale_code, realtime_delta_data)
+        removed_products_html_string = removed_products_html(locale_code, realtime_delta_data)
+        if not added_products_html_string:
+            print("no added product update detected")
+            return
         html_content = '''
-        <h1>Realtime Update ({})</h1>
+        <h1>Realtime Update {}</h1>
         {}
         {}
         <p><strong><br />Thanks for staying updated with us!</strong></p>
-        '''.format(locale_code, added_products_html(locale_code, realtime_delta_data),
-                   removed_products_html(locale_code, realtime_delta_data))
+        '''.format(flag_for_country(locale_code), added_products_html_string, removed_products_html_string)
         print(realtime_delta_data)
 
+        update_stamp = last_update_stamp.split('_to_')[-1]
         message = sendgrid.Mail(
             from_email='jiangcheng1214@gmail.com',
             to_emails=[
-                'chengjiang1214@gmail.com'
+                'chengjiang1214@gmail.com',
+                'haotianwu3@gmail.com',
+                'limeihui816@hotmail.com'
             ],
-            subject='Hermes realtime update ({})'.format(locale_code),
+            subject='📢 Hermes realtime update {} {}'.format(flag_for_country(locale_code), update_stamp),
             html_content=html_content
         )
         response = self.sg.send(message)
@@ -201,7 +215,10 @@ class EmailSender:
                                                                                                    category_code, sku),
                                                                   category_code)
                         added_item_html += item_html
-            return added_item_html.format(added_item_count)
+            if added_item_count > 0:
+                return added_item_html.format(added_item_count)
+            else:
+                return ""
 
         def removed_products_html(locale_code, daily_delta_data):
             removed_item_html = '<h2>Sold out Items ({} in total):</h2>'
@@ -235,7 +252,10 @@ class EmailSender:
                                                                                                        sku),
                                                                     category_code)
                         removed_item_html += item_html
-            return removed_item_html.format(removed_item_count)
+            if removed_item_count > 0:
+                return removed_item_html.format(removed_item_count)
+            else:
+                return ""
 
         daily_delta_db_path = "{}/delta_daily/{}/{}".format(locale_code, date_string[:-2], date_string)
         print('sending email for {} update'.format(daily_delta_db_path))
@@ -244,13 +264,17 @@ class EmailSender:
             print("daily delta not exists: {}".format(daily_delta_db_path))
             return
 
+        added_products_html_string = added_products_html(locale_code, daily_delta_data)
+        removed_products_html_string = removed_products_html(locale_code, daily_delta_data)
+        if not added_products_html_string and not removed_products_html_string:
+            print("no product update detected")
+            return
         html_content = '''
-        <h1>Update on {} ({})</h1>
+        <h1>Update on {} {}</h1>
         {}
         {}
         <p><strong><br />Thanks for staying updated with us!</strong></p>
-        '''.format(date_string, locale_code, added_products_html(locale_code, daily_delta_data),
-                   removed_products_html(locale_code, daily_delta_data))
+        '''.format(date_string, flag_for_country(locale_code), added_products_html_string, removed_products_html_string)
         print(daily_delta_data)
 
         message = sendgrid.Mail(
@@ -260,7 +284,7 @@ class EmailSender:
                 'haotianwu3@gmail.com',
                 'limeihui816@hotmail.com'
             ],
-            subject='{} Hermes daily update ({})'.format(date_string, locale_code),
+            subject='📢 {} Hermes daily update {}'.format(date_string, flag_for_country(locale_code)),
             html_content=html_content
         )
         response = self.sg.send(message)
@@ -288,7 +312,7 @@ class EmailSender:
 
 # sender = EmailSender()
 # sender.send_realtime_update('us_en')
-# sender.send_realtime_update("us_en", "20210607_22_08_58_to_20210607_23_09_00")
+# sender.send_realtime_update("us_en", "20210615_14_27_28_to_20210615_15_45_30")
 # sender.send_realtime_update("us_en", "20210607_23_09_00_to_20210607_23_54_01")
 # sender.send_daily_update('20210611', 'cn_zh')
 # response = sg.send(message)

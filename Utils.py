@@ -106,6 +106,18 @@ def supported_locales():
     return ['us_en', 'cn_zh', 'uk_en', 'de_de']
 
 
+def flag_for_country(locale_code):
+    locale_flags = {
+        'us_en': '🇺🇸',
+        'cn_zh': '🇨🇳',
+        'uk_en': '🇬🇧',
+        'de_de': '🇧🇪'
+    }
+    if locale_code in locale_flags:
+        return locale_flags[locale_code]
+    else:
+        return '🏳‍🌈'
+
 def close_all_other_tabs(driver):
     cur = driver.current_window_handle
     for handle in driver.window_handles:
