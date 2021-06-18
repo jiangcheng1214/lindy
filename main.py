@@ -5,6 +5,9 @@ from ScrapeTask import ScrapeTask
 from UpdateTask import UpdateTask
 from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException, timeout, TimeoutError
 
+task = ScrapeTask("cn_zh")
+task.start()
+sys.exit(0)
 
 @timeout(3600 * 4)
 def scrape_backup(local_code, job_type, proxy_list=None):
