@@ -25,7 +25,7 @@ class ScrapeTask:
         self.local_code = local_code
         self.deltaChecker = DeltaChecker()
         self.proxy_id = 0
-        self.proxy_list = proxy_list
+        self.proxy_list = proxy_list + [""]
         with open('credentials/firebase_credentials.json', 'r') as f:
             credentials = json.load(f)
         self.database = pyrebase.initialize_app(credentials).database()
@@ -33,22 +33,11 @@ class ScrapeTask:
         self.scraper = Scraper(proxy=self.get_proxy(), headless=not debug)
 
     def get_proxy(self, get_next=False):
-        if self.proxy_list:
-            if get_next:
-                if self.proxy_id == len(self.proxy_list):
-                    self.proxy_id = 0
-                    return None
-                else:
-                    p = self.proxy_list[self.proxy_id]
-                    self.proxy_id += 1
-                    return p
-            else:
-                if self.proxy_id == len(self.proxy_list):
-                    return None
-                else:
-                    return self.proxy_list[self.proxy_id]
-        else:
-            return None
+        if get_next:
+            self.proxy_id += 1
+        p = self.proxy_list[self.proxy_id]
+        log_info("proxy: {}".format(p))
+        return p
 
 
     def start(self):
