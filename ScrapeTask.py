@@ -29,7 +29,7 @@ class ScrapeTask:
             credentials = json.load(f)
         self.database = pyrebase.initialize_app(credentials).database()
         self.emailSender = EmailSender()
-        self.scraper = Scraper(on_proxy=on_proxy, headless=not debug)
+        self.scraper = Scraper(headless=not debug)
 
     def start(self):
         log_info("Starting new scraper instance..")

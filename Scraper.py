@@ -43,7 +43,7 @@ class LocaleInfo:
 
 
 class Scraper:
-    def __init__(self, on_proxy=False, headless=True):
+    def __init__(self, proxy=None, headless=True):
         options = Options()
 
         # setup userAgent
@@ -67,7 +67,8 @@ class Scraper:
         options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
         # setup proxy
-        options.add_argument('--proxy-server=http://{}'.format('163.172.36.211:16001'))
+        if proxy:
+            options.add_argument('--proxy-server=http://{}'.format(proxy))
         self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
         self.category_codes = supported_categories()
@@ -105,7 +106,8 @@ class Scraper:
             return False
         return True
 
-    def solve_recaptha(self):
+    def solve_recaptha(self, retry=0):
+
         def solve_audio_recaptha_attempt(retry_count=0):
             log_info("solve_audio_recaptha_attempt retry_count={}".format(retry_count))
             try:
@@ -169,6 +171,10 @@ class Scraper:
                 return solve_audio_recaptha_attempt(retry_count=retry_count + 1)
             return True
 
+        if retry == 3:
+            log_warning("solving recapcha failed after 3 attempts")
+            return False
+
         time.sleep(random.uniform(2, 3))
         captcha_iframe = self.driver.find_element_by_xpath(
             '//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]')
@@ -188,10 +194,13 @@ class Scraper:
         except Exception as ex:
             log_exception(ex)
             self.driver.switch_to.default_content()
-            return False
+            self.driver.refresh()
+            return self.solve_recaptha(retry + 1)
         anti_bot_solved = solve_audio_recaptha_attempt()
         self.driver.switch_to.default_content()
-        return anti_bot_solved
+        if anti_bot_solved:
+            return True
+        return self.solve_recaptha(retry + 1)
 
     def open_url_and_crack_antibot(self, url):
         try:
@@ -323,7 +332,7 @@ class Scraper:
     def get_product_info(self, locale_code):
 
         def get_product_info_from_category(category, retry=0):
-            if retry == 3:
+            if retry == 2:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
@@ -332,7 +341,7 @@ class Scraper:
             # workaround to simulate human behavior
             blocked = True
             attempt = 0
-            while attempt < 3:
+            while attempt < 2:
                 attempt += 1
                 log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
@@ -386,9 +395,9 @@ class Scraper:
                                                           offset)
                 self.driver.get(URL)
                 wait_random(1, 1.5)
-                if not self.driver.find_element_by_tag_name("pre"):
-                    log_exception("driver.find_element_by_tag_name(pre) returns nil")
-                    return get_product_info_from_category(category, retry + 1)
+                # if not self.driver.find_element_by_tag_name("pre"):
+                #     log_exception("driver.find_element_by_tag_name(pre) returns nil")
+                #     return get_product_info_from_category(category, retry + 1)
                 try:
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
                 except Exception:
@@ -451,7 +460,6 @@ class Scraper:
 
     def terminate(self):
         self.driver.quit()
-
 
 # port = 20001
 # while port <= 20300:
