@@ -101,6 +101,8 @@ class ScrapeTask:
                                                     scrape_results,
                                                     products_upload_result))
 
+
+
             if scrape_flag == "SUCCESS":
                 time_until_next_scrape = self.interval_seconds - time_used_in_seconds
                 log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
