@@ -58,7 +58,7 @@ class ScrapeTask:
                         scrape_flag)
                 self.scraper.terminate()
                 log_warning("Starting new scraper instance..")
-                self.scraper = Scraper(on_proxy=self.on_proxy, headless=not self.debug)
+                self.scraper = Scraper(headless=not self.debug)
             else:
                 if not last_scrape_flag:
                     self.database.child(

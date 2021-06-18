@@ -67,8 +67,8 @@ class Scraper:
         options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
         # setup proxy
-        if proxy:
-            options.add_argument('--proxy-server=http://{}'.format(proxy))
+        # if proxy:
+        #     options.add_argument('--proxy-server=http://{}'.format(proxy))
         self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
         self.category_codes = supported_categories()
