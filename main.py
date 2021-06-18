@@ -41,8 +41,8 @@ def scrape(local_code, job_type, proxy_list=None):
             blocked = True
         except Exception as e:
             log_exception(e)
-            email_sender = EmailSender()
-            email_sender.notice_admins_on_exception(e, local_code, job_type)
+            # email_sender = EmailSender()
+            # email_sender.notice_admins_on_exception(e, local_code, job_type)
 
 
 def update(local_code, job_type):

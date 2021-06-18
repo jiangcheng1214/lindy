@@ -65,7 +65,7 @@ class Scraper:
         # avoid being detected
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_experimental_option("excludeSwitches", ['enable-automation'])
-
+        options.add_argument("--remote-debugging-port=9222")
         # setup proxy
         # if proxy:
         #     options.add_argument('--proxy-server=http://{}'.format(proxy))
