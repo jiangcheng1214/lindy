@@ -3,7 +3,7 @@ import argparse
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from UpdateTask import UpdateTask
-from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException, timeout, TimeoutError
+from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException
 
 
 # @timeout(3600 * 4)
