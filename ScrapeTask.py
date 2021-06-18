@@ -39,7 +39,6 @@ class ScrapeTask:
         log_info("proxy: {}".format(p))
         return p
 
-
     def start(self):
         log_info("Starting new scraper instance..")
 
@@ -101,8 +100,6 @@ class ScrapeTask:
                                                     scrape_flag,
                                                     scrape_results,
                                                     products_upload_result))
-
-
 
             if scrape_flag == "SUCCESS":
                 time_until_next_scrape = self.interval_seconds - time_used_in_seconds
