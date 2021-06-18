@@ -67,18 +67,8 @@ class Scraper:
         options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
         # setup proxy
-        if on_proxy:
-            # TODO:
-            # with open('credentials/proxy_config.json', 'r') as f:
-            #     proxy_option = json.load(f)
-            #     seleniumwire_options = proxy_option
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-
-            # PROXY = "192.151.150.174:2000"
-            # options.add_argument('--proxy-server={}'.format(PROXY))
-            # self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        else:
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+        options.add_argument('--proxy-server=http://{}'.format('163.172.36.211:16001'))
+        self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
         self.print_ip()
         self.category_codes = supported_categories()
 
@@ -457,7 +447,7 @@ class Scraper:
             log_info('ip: {}'.format(detected_ip))
         except Exception:
             log_info('print_ip exception')
-            raise SlowIPError("proxy slow")
+            raise SlowIPException("proxy slow")
 
     def terminate(self):
         self.driver.quit()
