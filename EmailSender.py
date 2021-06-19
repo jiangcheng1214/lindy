@@ -3,7 +3,7 @@ import json
 import pyrebase
 import sendgrid
 
-from Utils import supported_categories, get_current_pst_format_timestamp, flag_for_country
+from Utils import supported_categories, get_current_pst_format_timestamp, flag_for_country, log_info
 
 
 class EmailSender:
@@ -66,7 +66,7 @@ class EmailSender:
                 html += template.format('https:' + url['url'])
             return html
 
-        def added_products_html(locale_code, daily_delta_data):
+        def added_products_html(locale_code, realtime_delta_data):
             added_item_html = '<h2>New Items ({} in total):</h2>'
             added_product_template = '''
                         <hr />
@@ -79,16 +79,16 @@ class EmailSender:
             added_item_count = 0
             visited = set()
             for category_code in supported_categories():
-                if category_code not in daily_delta_data:
-                    print('{} not in daily_delta_data'.format(category_code))
+                if category_code not in realtime_delta_data:
+                    log_info('{} not in realtime_delta_data'.format(category_code))
                     continue
-                if "ADDED" in daily_delta_data[category_code]:
-                    for sku in daily_delta_data[category_code]['ADDED']:
+                if "ADDED" in realtime_delta_data[category_code]:
+                    for sku in realtime_delta_data[category_code]['ADDED']:
                         if sku in visited:
                             continue
                         visited.add(sku)
                         added_item_count += 1
-                        item = daily_delta_data[category_code]['ADDED'][sku]
+                        item = realtime_delta_data[category_code]['ADDED'][sku]
                         item_html = added_product_template.format(image_html(item), added_item_count,
                                                                   'https://www.hermes.com/{}'.format(locale_code.replace("_", "/")) + item['url'],
                                                                   item['title'],
@@ -98,6 +98,7 @@ class EmailSender:
                                                                   category_code)
                         added_item_html += item_html
             if added_item_count > 0:
+                log_info("Detected {} realtime added items".format(added_item_count))
                 return added_item_html.format(added_item_count)
             else:
                 return ""
@@ -116,7 +117,7 @@ class EmailSender:
             visited = set()
             for category_code in supported_categories():
                 if category_code not in daily_delta_data:
-                    print('{} not in daily_delta_data'.format(category_code))
+                    log_info('{} not in daily_delta_data'.format(category_code))
                     continue
                 if "REMOVED" in daily_delta_data[category_code]:
                     for sku in daily_delta_data[category_code]['REMOVED']:
@@ -142,15 +143,15 @@ class EmailSender:
         if not last_update_stamp:
             last_update_stamp = self.database.child("{}/delta_realtime/last_update".format(locale_code)).get().val()
         delta_realtime_path = "{}/delta_realtime/{}/{}".format(locale_code, last_update_stamp[:6], last_update_stamp)
-        print('sending email for {} real time update'.format(delta_realtime_path))
+        log_info('sending email for {} real time update'.format(delta_realtime_path))
         realtime_delta_data = self.database.child(delta_realtime_path).get().val()
         if not realtime_delta_data:
-            print("realtime delta not exists: {}".format(delta_realtime_path))
+            log_info("realtime delta not exists: {}".format(delta_realtime_path))
             return
         added_products_html_string = added_products_html(locale_code, realtime_delta_data)
         removed_products_html_string = removed_products_html(locale_code, realtime_delta_data)
         if not added_products_html_string:
-            print("no added product update detected")
+            log_info("no added product update detected")
             return
         html_content = '''
         <h1>Realtime Update {}</h1>
@@ -158,13 +159,13 @@ class EmailSender:
         {}
         <p><strong><br />Thanks for staying updated with us!</strong></p>
         '''.format(flag_for_country(locale_code), added_products_html_string, removed_products_html_string)
-        print(realtime_delta_data)
+        log_info(realtime_delta_data)
 
         update_stamp = last_update_stamp.split('_to_')[-1]
         message = sendgrid.Mail(
-            from_email='jiangcheng1214@gmail.com',
+            from_email='chengjiang1214@gmail.com',
             to_emails=[
-                'chengjiang1214@gmail.com',
+                'jiangcheng1214@gmail.com',
                 'haotianwu3@gmail.com',
                 'limeihui816@hotmail.com'
             ],
@@ -172,9 +173,9 @@ class EmailSender:
             html_content=html_content
         )
         response = self.sg.send(message)
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        log_info(response.status_code)
+        log_info(response.body)
+        log_info(response.headers)
 
     def send_daily_update(self, date_string, locale_code):
         def image_html(item):
@@ -198,7 +199,7 @@ class EmailSender:
             visited = set()
             for category_code in supported_categories():
                 if category_code not in daily_delta_data:
-                    print('{} not in daily_delta_data'.format(category_code))
+                    log_info('{} not in daily_delta_data'.format(category_code))
                     continue
                 if "ADDED" in daily_delta_data[category_code]:
                     for sku in daily_delta_data[category_code]['ADDED']:
@@ -216,6 +217,7 @@ class EmailSender:
                                                                   category_code)
                         added_item_html += item_html
             if added_item_count > 0:
+                log_info("Detected {} added items on daily update".format(added_item_count))
                 return added_item_html.format(added_item_count)
             else:
                 return ""
@@ -234,7 +236,7 @@ class EmailSender:
             visited = set()
             for category_code in supported_categories():
                 if category_code not in daily_delta_data:
-                    print('{} not in daily_delta_data'.format(category_code))
+                    log_info('{} not in daily_delta_data'.format(category_code))
                     continue
                 if "REMOVED" in daily_delta_data[category_code]:
                     for sku in daily_delta_data[category_code]['REMOVED']:
@@ -258,16 +260,16 @@ class EmailSender:
                 return ""
 
         daily_delta_db_path = "{}/delta_daily/{}/{}".format(locale_code, date_string[:-2], date_string)
-        print('sending email for {} update'.format(daily_delta_db_path))
+        log_info('sending email for {} update'.format(daily_delta_db_path))
         daily_delta_data = self.database.child(daily_delta_db_path).get().val()
         if not daily_delta_data:
-            print("daily delta not exists: {}".format(daily_delta_db_path))
+            log_info("daily delta not exists: {}".format(daily_delta_db_path))
             return
 
         added_products_html_string = added_products_html(locale_code, daily_delta_data)
         removed_products_html_string = removed_products_html(locale_code, daily_delta_data)
         if not added_products_html_string and not removed_products_html_string:
-            print("no product update detected")
+            log_info("no product update detected")
             return
         html_content = '''
         <h1>Update on {} {}</h1>
@@ -275,12 +277,12 @@ class EmailSender:
         {}
         <p><strong><br />Thanks for staying updated with us!</strong></p>
         '''.format(date_string, flag_for_country(locale_code), added_products_html_string, removed_products_html_string)
-        print(daily_delta_data)
+        log_info(daily_delta_data)
 
         message = sendgrid.Mail(
-            from_email='jiangcheng1214@gmail.com',
+            from_email='chengjiang1214@gmail.com',
             to_emails=[
-                'chengjiang1214@gmail.com',
+                'jiangcheng1214@gmail.com',
                 'haotianwu3@gmail.com',
                 'limeihui816@hotmail.com'
             ],
@@ -288,15 +290,15 @@ class EmailSender:
             html_content=html_content
         )
         response = self.sg.send(message)
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        log_info(response.status_code)
+        log_info(response.body)
+        log_info(response.headers)
 
     def notice_admins_on_exception(self, exception, local_code, job_type):
         message = sendgrid.Mail(
-            from_email='jiangcheng1214@gmail.com',
+            from_email='chengjiang1214@gmail.com',
             to_emails=[
-                'chengjiang1214@gmail.com',
+                'jiangcheng1214@gmail.com',
             ],
             subject='Hermes scraper exception {}'.format(get_current_pst_format_timestamp()),
             html_content='''
@@ -306,16 +308,16 @@ class EmailSender:
             '''.format(exception, local_code, job_type)
         )
         response = self.sg.send(message)
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        log_info(response.status_code)
+        log_info(response.body)
+        log_info(response.headers)
 
 # sender = EmailSender()
-# sender.send_realtime_update('cn_zh', "20210616_00_08_13_to_20210616_00_14_13")
+# sender.send_realtime_update('us_en', "20210617_09_46_53_to_20210617_10_28_55")
 # sender.send_realtime_update("us_en", "20210615_14_27_28_to_20210615_15_45_30")
 # sender.send_realtime_update("us_en", "20210607_23_09_00_to_20210607_23_54_01")
-# sender.send_daily_update('20210611', 'cn_zh')
+# sender.send_daily_update('20210618', 'us_en')
 # response = sg.send(message)
-# print(response.status_code)
-# print(response.body)
-# print(response.headers)
+# log_info(response.status_code)
+# log_info(response.body)
+# log_info(response.headers)
