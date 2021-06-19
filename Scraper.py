@@ -402,9 +402,8 @@ class Scraper:
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
                 except Exception:
                     log_exception("load json failed: {}".format(URL))
-                    return get_product_info_from_category(category, retry + 1)
-                if 'total' not in response_json:
-                    log_exception("total is not a field of: {}".format(response_json))
+                if not response_json or 'total' not in response_json:
+                    log_exception("invalid json response: {}".format(response_json))
                     return get_product_info_from_category(category, retry + 1)
                 if not response_json['products']['items']:
                     break

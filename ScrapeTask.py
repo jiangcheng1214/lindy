@@ -35,6 +35,7 @@ class ScrapeTask:
     def get_proxy(self, get_next=False):
         if get_next:
             self.proxy_id += 1
+        self.proxy_id %= len(self.proxy_list)
         p = self.proxy_list[self.proxy_id]
         log_info("proxy: {}".format(p))
         return p

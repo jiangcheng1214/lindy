@@ -69,7 +69,7 @@ def create_empty_file(dir_path, name):
         os.makedirs(dir_path)
     file_path = os.path.join(dir_path, name)
     with open(file_path, 'w+'):
-        print('{} created!'.format(file_path))
+        log_info('{} created!'.format(file_path))
 
 
 def log_info(s):
