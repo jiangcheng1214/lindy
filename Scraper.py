@@ -76,6 +76,7 @@ class Scraper:
     def is_detected_by_anti_bot(self):
         if self.driver.find_elements_by_xpath('//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]'):
             log_info("detected by anti-bot")
+            create_empty_file(self.product_dir_path, "ANTIBOT")
             return True
         return False
 
@@ -93,7 +94,8 @@ class Scraper:
 
     def has_been_blocked(self):
         block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
-        return os.path.exists(block_flag_path)
+        antibot_flag_path = os.path.join(self.product_dir_path, "ANTIBOT")
+        return os.path.exists(block_flag_path) and not os.path.exists(antibot_flag_path)
 
     def type_with_delay(self, xpath, value):
         try:
@@ -379,6 +381,7 @@ class Scraper:
                 return get_product_info_from_category(category, retry + 1)
 
             try:
+                wait_random(2, 3)
                 WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
             except Exception:
                 log_info("failed to detect '//html/body/pre' with {}".format(URL))
@@ -405,6 +408,7 @@ class Scraper:
                                                           offset)
                 self.driver.get(URL)
                 try:
+                    wait_random(2, 3)
                     WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
                 except Exception:
                     log_info("failed to load json response")
