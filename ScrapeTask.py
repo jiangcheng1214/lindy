@@ -42,8 +42,7 @@ class ScrapeTask:
         return p
 
     def start(self):
-        log_info("Starting new scraper instance..")
-
+        log_info("Start scraping..")
         index = 0
         sequential_blocks = 0
         while 1:
@@ -79,21 +78,23 @@ class ScrapeTask:
                                                     scrape_results,
                                                     products_upload_result))
 
-            if scrape_flag == "BLOCKED":
-                self.scraper.terminate()
-                sequential_blocks += 1
-                if sequential_blocks == 10:
-                    self.scraper.terminate()
-                    raise BlockedIPException("Scraper is Blocked for 10 times in a row")
-                log_warning(
-                    "Starting new scraper instance after being blocked.. {} blocked in a row".format(sequential_blocks))
-                self.scraper = Scraper(proxy=self.get_proxy(get_next=True), headless=not self.debug)
             if scrape_flag == "SUCCESS":
                 time_until_next_scrape = self.interval_seconds - time_used_in_seconds
                 log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
                 if time_until_next_scrape > 0:
                     time.sleep(time_until_next_scrape)
                 index += 1
+            else:
+                sequential_blocks += 1
+                self.scraper.terminate()
+                if sequential_blocks == 10:
+                    raise BlockedIPException("Scraper failed for 10 times in a row")
+                if scrape_flag == "BLOCKED":
+                    try_next_proxy = True
+                    log_warning("Starting new scraper instance after being blocked..")
+                else:
+                    try_next_proxy = False
+                self.scraper = Scraper(proxy=self.get_proxy(get_next=try_next_proxy), headless=not self.debug)
 
     def terminate_scraper(self):
         self.scraper.terminate()
