@@ -1,3 +1,4 @@
+import re
 import sys
 import argparse
 from EmailSender import EmailSender
@@ -73,7 +74,7 @@ if __name__ == "__main__":
 
     if job_type == "scraping":
         if args.proxy_list:
-            proxy_list = args.proxy_list.split(',')
+            proxy_list = re.split(',| |\n', args.proxy_list)
         else:
             proxy_list = None
         scrape(local_code, job_type, proxy_list)
