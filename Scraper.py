@@ -338,9 +338,6 @@ class Scraper:
     def get_product_info(self, locale_code):
 
         def get_product_info_from_category(category, retry=0):
-            if self.has_been_blocked():
-                log_info("has been blocked!")
-                return False
             if retry == 2:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
@@ -350,7 +347,7 @@ class Scraper:
             # workaround to simulate human behavior
             blocked = True
             attempt = 0
-            while attempt < 2:
+            while attempt < 3:
                 attempt += 1
                 log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
