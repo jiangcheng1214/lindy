@@ -426,11 +426,15 @@ class Scraper:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
                 return get_product_info_from_category(category, retry + 1)
             file_path = os.path.join(self.product_dir_path, category)
-            with open(file_path, 'w+') as f:
-                for r in results:
-                    json.dump(r, f)
-                    f.write('\n')
-            log_info('results dump finished')
+            try:
+                with open(file_path, 'w+') as f:
+                    for r in results:
+                        json.dump(r, f)
+                        f.write('\n')
+                log_info('results dump finished')
+            except Exception as e:
+                log_exception(e)
+                return get_product_info_from_category(category, retry + 1)
             return True
 
         log_info("Started scraping product info for {}...".format(locale_code))
