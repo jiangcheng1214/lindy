@@ -79,7 +79,7 @@ class Scraper:
             return True
         return False
 
-    def is_blocked(self):
+    def is_currently_blocked(self):
         if self.driver.find_elements_by_xpath('//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]'):
             self.driver.switch_to.frame(
                 self.driver.find_elements_by_xpath(
@@ -90,6 +90,10 @@ class Scraper:
             self.driver.switch_to.default_content()
             return False
         return False
+
+    def has_been_blocked(self):
+        block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
+        return os.path.exists(block_flag_path)
 
     def type_with_delay(self, xpath, value):
         try:
@@ -207,7 +211,7 @@ class Scraper:
             self.driver.get(url)
             log_info("opened url: {}".format(url))
             time.sleep(random.uniform(2, 3))
-            if self.is_blocked():
+            if self.is_currently_blocked():
                 log_info('blocked!')
                 return False
             if self.is_detected_by_anti_bot():
@@ -332,6 +336,9 @@ class Scraper:
     def get_product_info(self, locale_code):
 
         def get_product_info_from_category(category, retry=0):
+            if self.has_been_blocked():
+                log_info("has been blocked!")
+                return False
             if retry == 2:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
@@ -346,7 +353,7 @@ class Scraper:
                 log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
                 wait_random(1, 2)
-                if not self.is_blocked():
+                if not self.is_currently_blocked():
                     blocked = False
                     break
                 else:
@@ -361,30 +368,33 @@ class Scraper:
             if self.is_detected_by_anti_bot():
                 if self.solve_recaptha():
                     log_info('solve_recaptha done!')
-                    open_success = True
+                    recaptha_solved = True
                 else:
                     log_info('solve_recaptha failed!')
-                    open_success = False
+                    recaptha_solved = False
             else:
-                open_success = True
+                recaptha_solved = True
 
-            if not open_success:
+            if not recaptha_solved:
                 return get_product_info_from_category(category, retry + 1)
+
             try:
                 WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
             except Exception:
-                log_info("failed to load json response")
+                log_info("failed to detect '//html/body/pre' with {}".format(URL))
                 return get_product_info_from_category(category, retry + 1)
             response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
             try:
                 total = response_json['total']
+                log_info('total product count = {}'.format(total))
             except Exception:
                 log_info("invalid response_json: {}".format(response_json))
                 return get_product_info_from_category(category, retry + 1)
-            log_info('total product count = {}'.format(total))
+
+            reach_end_of_product_list = False
             results = []
             offset = 0
-            while 1:
+            while not reach_end_of_product_list:
                 products = response_json['products']['items']
                 log_info('current product list count = {}'.format(len(products)))
                 for p in products:
@@ -394,10 +404,11 @@ class Scraper:
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
                 self.driver.get(URL)
-                wait_random(1, 1.5)
-                # if not self.driver.find_element_by_tag_name("pre"):
-                #     log_exception("driver.find_element_by_tag_name(pre) returns nil")
-                #     return get_product_info_from_category(category, retry + 1)
+                try:
+                    WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
+                except Exception:
+                    log_info("failed to load json response")
+                    return get_product_info_from_category(category, retry + 1)
                 try:
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
                 except Exception:
@@ -405,8 +416,9 @@ class Scraper:
                 if not response_json or 'total' not in response_json:
                     log_exception("invalid json response: {}".format(response_json))
                     return get_product_info_from_category(category, retry + 1)
-                if not response_json['products']['items']:
-                    break
+                if response_json['total'] == 0 or not response_json['products']['items']:
+                    log_info('reached end of product list')
+                    reach_end_of_product_list = True
 
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
@@ -433,7 +445,6 @@ class Scraper:
         if not self.timestamp:
             return "NOT_READY", results
         flag = "SUCCESS"
-        block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
         for category_code in self.category_codes:
             category_success_file_path = os.path.join(self.product_dir_path, "SUCCESS_{}".format(category_code))
             if os.path.exists(category_success_file_path):
@@ -441,7 +452,7 @@ class Scraper:
             else:
                 results[category_code] = "FAIL"
                 flag = "FAIL"
-        if os.path.exists(block_flag_path):
+        if self.has_been_blocked():
             flag = "BLOCKED"
         return flag, results
 
