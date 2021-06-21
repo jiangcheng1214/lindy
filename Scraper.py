@@ -22,6 +22,8 @@ import constants
 from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
     get_current_pst_format_timestamp, wait_random, delete_dir, SlowIPException
 
+from selenium_stealth import stealth
+
 CHROMEDRIVER_BIN_PATH = '/usr/local/bin/chromedriver'
 
 '''
@@ -61,7 +63,7 @@ class Scraper:
             options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-gpu')
-        
+
         # avoid being detected
         options.add_argument('--ignore-certificate-errors')
         options.add_argument("--disable-blink-features")
@@ -76,9 +78,22 @@ class Scraper:
         if proxy:
             options.add_argument('--proxy-server=http://{}'.format(proxy))
         self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        })
+        stealth(self.driver,
+                languages=["en-US", "en"],
+                vendor="Google Inc.",
+                platform="Win32",
+                webgl_vendor="Intel Inc.",
+                renderer="Intel Iris OpenGL Engine",
+                fix_hairline=True,
+                )
+        # self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        #     "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        # })
+        # with open('./stealth.min.js') as f:
+        #     js = f.read()
+        # self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        #     "source": js
+        # })
         self.print_ip()
         self.category_codes = supported_categories()
 
