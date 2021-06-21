@@ -83,7 +83,6 @@ class ScrapeTask:
                 log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
                 if time_until_next_scrape > 0:
                     time.sleep(time_until_next_scrape)
-                index += 1
             else:
                 sequential_blocks += 1
                 self.scraper.terminate()
@@ -95,6 +94,7 @@ class ScrapeTask:
                 else:
                     try_next_proxy = False
                 self.scraper = Scraper(proxy=self.get_proxy(get_next=try_next_proxy), headless=not self.debug)
+            index += 1
 
     def terminate_scraper(self):
         self.scraper.terminate()
