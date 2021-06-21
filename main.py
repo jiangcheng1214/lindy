@@ -29,11 +29,11 @@ from Utils import SlowIPException, log_exception, supported_locales, BlockedIPEx
 #             email_sender.notice_admins_on_exception(e, local_code, job_type)
 #
 
-def scrape(local_code, job_type, proxy_list=None):
+def scrape(local_code, job_type, proxy_list=None, debug=False):
     blocked = False
     while not blocked:
         try:
-            task = ScrapeTask(local_code, proxy_list=proxy_list, debug=False)
+            task = ScrapeTask(local_code, proxy_list=proxy_list, debug=debug)
             task.start()
         except SlowIPException as e:
             log_exception(e)
@@ -42,18 +42,20 @@ def scrape(local_code, job_type, proxy_list=None):
             blocked = True
         except Exception as e:
             log_exception(e)
-            email_sender = EmailSender()
-            email_sender.notice_admins_on_exception(e, local_code, job_type)
+            if not debug:
+                email_sender = EmailSender()
+                email_sender.notice_admins_on_exception(e, local_code, job_type)
 
 
-def update(local_code, job_type):
+def update(local_code, job_type, debug=False):
     try:
         task = UpdateTask(local_code)
         task.start()
     except Exception as e:
         log_exception(e)
-        email_sender = EmailSender()
-        email_sender.notice_admins_on_exception(e, local_code, job_type)
+        if not debug:
+            email_sender = EmailSender()
+            email_sender.notice_admins_on_exception(e, local_code, job_type)
 
 
 if __name__ == "__main__":
@@ -61,6 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--locale', help='job locale (e.g us_en, cn_zh)', required=True)
     parser.add_argument('-t', '--type', help='job type (e.g scraping, updating)', required=True)
     parser.add_argument('-p', '--proxy_list', help='proxy list that scraping jobs run on', required=False)
+    parser.add_argument('-d', '--debug', help='debug mode', required=False, action="store_true")
     args = parser.parse_args()
 
     print("Start job with arguments: {}".format(args))
@@ -77,9 +80,9 @@ if __name__ == "__main__":
             proxy_list = re.split(',', args.proxy_list)
         else:
             proxy_list = None
-        scrape(local_code, job_type, proxy_list)
+        scrape(local_code, job_type, proxy_list, debug=args.debug)
     elif job_type == "updating":
-        update(local_code, job_type)
+        update(local_code, job_type, debug=args.debug)
     else:
         print("job_type {} is not supported.".format(job_type))
     sys.exit(-1)

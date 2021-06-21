@@ -401,6 +401,7 @@ class Scraper:
             if not recaptha_solved:
                 return get_product_info_from_category(category, retry + 1)
 
+            total = None
             for i in range(5):
                 try:
                     wait_random(2, 3)
