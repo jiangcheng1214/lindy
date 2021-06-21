@@ -61,15 +61,24 @@ class Scraper:
             options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-gpu')
-
+        
         # avoid being detected
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument("--disable-blink-features")
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_experimental_option("excludeSwitches", ['enable-automation'])
+        # mobile_emulation = {
+        # "userAgent": "Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"}
+        # options.add_experimental_option("mobileEmulation", mobile_emulation)
+        options.add_experimental_option('useAutomationExtension', False)
 
         # setup proxy
         if proxy:
             options.add_argument('--proxy-server=http://{}'.format(proxy))
         self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+        self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        })
         self.print_ip()
         self.category_codes = supported_categories()
 
@@ -347,7 +356,7 @@ class Scraper:
             # workaround to simulate human behavior
             blocked = True
             attempt = 0
-            while attempt < 3:
+            while attempt < 2:
                 attempt += 1
                 log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
@@ -377,19 +386,32 @@ class Scraper:
             if not recaptha_solved:
                 return get_product_info_from_category(category, retry + 1)
 
-            try:
-                wait_random(2, 3)
-                WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
-            except Exception:
-                log_info("failed to detect '//html/body/pre' with {}".format(URL))
+            for i in range(5):
+                try:
+                    wait_random(2, 3)
+                    response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
+                    assert response_json['products']['items']
+                    total = response_json['total']
+                    log_info('total product count = {}'.format(total))
+                    break
+                except Exception:
+                    log_info("failed to load response_json attempt: {}".format(i))
+                    self.driver.refresh()
+            if not total:
                 return get_product_info_from_category(category, retry + 1)
-            response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
-            try:
-                total = response_json['total']
-                log_info('total product count = {}'.format(total))
-            except Exception:
-                log_info("invalid response_json: {}".format(response_json))
-                return get_product_info_from_category(category, retry + 1)
+            # try:
+            #     wait_random(2, 3)
+            #     WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
+            # except Exception:
+            #     log_info("failed to detect '//html/body/pre' with {}".format(URL))
+            #     return get_product_info_from_category(category, retry + 1)
+            # response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
+            # try:
+            #     total = response_json['total']
+            #     log_info('total product count = {}'.format(total))
+            # except Exception:
+            #     log_info("invalid response_json: {}".format(response_json))
+            #     return get_product_info_from_category(category, retry + 1)
 
             reach_end_of_product_list = False
             results = []
