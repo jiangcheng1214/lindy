@@ -402,7 +402,7 @@ class Scraper:
                 return get_product_info_from_category(category, retry + 1)
 
             total = None
-            for i in range(5):
+            for i in range(3):
                 try:
                     wait_random(2, 3)
                     response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)

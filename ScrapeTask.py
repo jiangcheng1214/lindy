@@ -56,7 +56,6 @@ class ScrapeTask:
             self.database.child('{}/scrape'.format(database_log_prefix)).set(scrape_flag)
             products_upload_result = {}
             if scrape_flag == "SUCCESS":
-                sequential_blocks = 0
                 log_info("update products info attempt started")
                 products_upload_result = self.deltaChecker.upload_products_if_necessary(scraper_timestamp,
                                                                                         self.local_code)
@@ -79,21 +78,20 @@ class ScrapeTask:
                                                     products_upload_result))
 
             if scrape_flag == "SUCCESS":
+                sequential_blocks = 0
                 time_until_next_scrape = self.interval_seconds - time_used_in_seconds
                 log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
                 if time_until_next_scrape > 0:
                     time.sleep(time_until_next_scrape)
-            else:
+            elif scrape_flag == "BLOCKED":
                 sequential_blocks += 1
                 self.scraper.terminate()
                 if sequential_blocks == 10:
                     raise BlockedIPException("Scraper failed for 10 times in a row")
-                if scrape_flag == "BLOCKED":
-                    try_next_proxy = True
-                    log_warning("Starting new scraper instance after being blocked..")
-                else:
-                    try_next_proxy = False
-                self.scraper = Scraper(proxy=self.get_proxy(get_next=try_next_proxy), headless=not self.debug)
+                log_warning("Starting new scraper instance after being blocked..")
+                self.scraper = Scraper(proxy=self.get_proxy(get_next=True), headless=not self.debug)
+            else:
+                sequential_blocks = 0
             index += 1
 
     def terminate_scraper(self):

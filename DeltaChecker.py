@@ -177,7 +177,7 @@ class DeltaChecker:
                                                                                                timestamp_forward,
                                                                                                category))
                 continue
-
+            # TODO: make time_added and time_removed a list
             for type in delta_info:
                 for item_json in delta_info[type]:
                     sku = item_json['sku']
