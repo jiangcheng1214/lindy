@@ -4,22 +4,22 @@ import argparse
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from UpdateTask import UpdateTask
-from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException, timeout, wait_random, \
+from Utils import SlowIPException, log_exception, supported_locales, ConsecutiveFailureException, timeout, wait_random, \
     TimeoutException, log_warning, log_info
 
 
 @timeout(3600 * 2.5)  # timeout in 2.5 hrs
 def scrape_with_timeout(local_code, job_type, proxy_list=None, debug=False):
-    blocked = False
-    while not blocked:
+    failed = False
+    while not failed:
         try:
             task = ScrapeTask(local_code, proxy_list=proxy_list, debug=debug)
             task.start()
         except SlowIPException as e:
             log_exception(e)
-        except BlockedIPException as e:
+        except ConsecutiveFailureException as e:
             log_exception(e)
-            blocked = True
+            failed = True
         except TimeoutException:
             log_warning("Timeout! Terminated the program.")
             sys.exit(0)
@@ -38,16 +38,16 @@ def rest(hours):
 
 
 def scrape(local_code, job_type, proxy_list=None, debug=False):
-    blocked = False
-    while not blocked:
+    failed = False
+    while not failed:
         try:
             task = ScrapeTask(local_code, proxy_list=proxy_list, debug=debug)
             task.start()
         except SlowIPException as e:
             log_exception(e)
-        except BlockedIPException as e:
+        except ConsecutiveFailureException as e:
             log_exception(e)
-            blocked = True
+            failed = True
         except Exception as e:
             log_exception(e)
             if not debug:

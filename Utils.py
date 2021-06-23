@@ -17,7 +17,7 @@ class SlowIPException(Exception):
     pass
 
 
-class BlockedIPException(Exception):
+class ConsecutiveFailureException(Exception):
     pass
 
 
