@@ -76,25 +76,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Start job with arguments: {}".format(args))
-
-    local_code = args.locale
-    if local_code not in supported_locales():
-        print("{} is not supported. {}".format(local_code, supported_locales()))
-        sys.exit(-1)
-
     job_type = args.type
-
     if job_type == "scraping":
+        assert args.locale in supported_locales()
         if args.proxy_list:
             proxy_list = re.split(',', args.proxy_list)
         else:
             proxy_list = None
         if args.timeout:
-            scrape_with_timeout(local_code, job_type, proxy_list, debug=args.debug)
+            scrape_with_timeout(args.locale, job_type, proxy_list, debug=args.debug)
         else:
-            scrape(local_code, job_type, proxy_list, debug=args.debug)
+            scrape(args.locale, job_type, proxy_list, debug=args.debug)
     elif job_type == "updating":
-        update(local_code, job_type, debug=args.debug)
+        assert args.locale in supported_locales()
+        update(args.locale, job_type, debug=args.debug)
     elif job_type == "resting":
         rest(4)
     else:
