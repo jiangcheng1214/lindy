@@ -99,7 +99,8 @@ def wait_random(lower_bound, higher_bound):
 
 
 def supported_categories():
-    return ['WOMENBAGSSMALLLEATHERGOODS', 'MENBAGSSMALLLEATHERGOODS', 'BIJOUTERIE']
+    return ['WOMENBAGSSMALLLEATHERGOODS', 'MENBAGSSMALLLEATHERGOODS']
+    # , 'BIJOUTERIE'
 
 
 def supported_locales():
