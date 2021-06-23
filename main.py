@@ -68,8 +68,8 @@ def update(local_code, job_type, debug=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Main entrance to hermes scraper / updater / emailSender')
-    parser.add_argument('-l', '--locale', help='job locale (e.g us_en, cn_zh)', required=True)
     parser.add_argument('-t', '--type', help='job type (e.g scraping, updating)', required=True)
+    parser.add_argument('-l', '--locale', help='job locale (e.g us_en, cn_zh)', required=False)
     parser.add_argument('-p', '--proxy_list', help='proxy list that scraping jobs run on', required=False)
     parser.add_argument('-d', '--debug', help='debug mode', required=False, action="store_true")
     parser.add_argument('-o', '--timeout', help='timeout mode', required=False, action="store_true")
