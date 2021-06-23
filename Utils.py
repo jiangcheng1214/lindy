@@ -21,27 +21,27 @@ class BlockedIPException(Exception):
     pass
 
 
-# class TimeoutError(Exception):
-#     pass
-#
-#
-# def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
-#     def decorator(func):
-#         def _handle_timeout(signum, frame):
-#             raise TimeoutError(error_message)
-#
-#         def wrapper(*args, **kwargs):
-#             signal.signal(signal.SIGALRM, _handle_timeout)
-#             signal.alarm(seconds)
-#             try:
-#                 result = func(*args, **kwargs)
-#             finally:
-#                 signal.alarm(0)
-#             return result
-#
-#         return wraps(func)(wrapper)
-#
-#     return decorator
+class TimeoutException(Exception):
+    pass
+
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def decorator(func):
+        def _handle_timeout(signum, frame):
+            raise TimeoutException(error_message)
+
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(int(seconds))
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wraps(func)(wrapper)
+
+    return decorator
 
 
 def get_current_pst_format_timestamp():

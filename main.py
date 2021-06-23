@@ -4,30 +4,38 @@ import argparse
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from UpdateTask import UpdateTask
-from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException
+from Utils import SlowIPException, log_exception, supported_locales, BlockedIPException, timeout, wait_random, \
+    TimeoutException, log_warning, log_info
 
 
-# @timeout(3600 * 4)
-# def scrape_backup(local_code, job_type, proxy_list=None):
-#     while 1:
-#         try:
-#             task = ScrapeTask(local_code, proxy_list=proxy_list)
-#             task.start()
-#         except SlowIPException as e:
-#             log_exception(e)
-#         except BlockedIPException as e:
-#             log_exception(e)
-#             email_sender = EmailSender()
-#             email_sender.notice_admins_on_exception(e, local_code, job_type)
-#             sys.exit(-1)
-#         except TimeoutError as e:
-#             log_exception(e)
-#             sys.exit(0)
-#         except Exception as e:
-#             log_exception(e)
-#             email_sender = EmailSender()
-#             email_sender.notice_admins_on_exception(e, local_code, job_type)
-#
+@timeout(3600 * 2.5)  # timeout in 2.5 hrs
+def scrape_with_timeout(local_code, job_type, proxy_list=None, debug=False):
+    blocked = False
+    while not blocked:
+        try:
+            task = ScrapeTask(local_code, proxy_list=proxy_list, debug=debug)
+            task.start()
+        except SlowIPException as e:
+            log_exception(e)
+        except BlockedIPException as e:
+            log_exception(e)
+            blocked = True
+        except TimeoutException:
+            log_warning("Timeout! Terminated the program.")
+            sys.exit(0)
+        except Exception as e:
+            log_exception(e)
+            if not debug:
+                email_sender = EmailSender()
+                email_sender.notice_admins_on_exception(e, local_code, job_type)
+
+
+def rest(hours):
+    log_info("start sleeping")
+    wait_random(3600 * hours, 3600 * hours)
+    log_info("end sleeping")
+    sys.exit(0)
+
 
 def scrape(local_code, job_type, proxy_list=None, debug=False):
     blocked = False
@@ -64,6 +72,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--type', help='job type (e.g scraping, updating)', required=True)
     parser.add_argument('-p', '--proxy_list', help='proxy list that scraping jobs run on', required=False)
     parser.add_argument('-d', '--debug', help='debug mode', required=False, action="store_true")
+    parser.add_argument('-o', '--timeout', help='timeout mode', required=False, action="store_true")
     args = parser.parse_args()
 
     print("Start job with arguments: {}".format(args))
@@ -80,9 +89,14 @@ if __name__ == "__main__":
             proxy_list = re.split(',', args.proxy_list)
         else:
             proxy_list = None
-        scrape(local_code, job_type, proxy_list, debug=args.debug)
+        if args.timeout:
+            scrape_with_timeout(local_code, job_type, proxy_list, debug=args.debug)
+        else:
+            scrape(local_code, job_type, proxy_list, debug=args.debug)
     elif job_type == "updating":
         update(local_code, job_type, debug=args.debug)
+    elif job_type == "resting":
+        rest(4)
     else:
         print("job_type {} is not supported.".format(job_type))
     sys.exit(-1)
