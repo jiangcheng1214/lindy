@@ -94,4 +94,4 @@ if __name__ == "__main__":
         rest(4)
     else:
         print("job_type {} is not supported.".format(job_type))
-    sys.exit(-1)
+    sys.exit(0)
