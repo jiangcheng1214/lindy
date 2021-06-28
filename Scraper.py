@@ -1,17 +1,18 @@
+from datetime import datetime
 import json
 import os
+import random
 import re
 import time
 import urllib
-import random
-from fake_useragent import UserAgent
-from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
-    get_current_pst_format_timestamp, wait_random, delete_dir
+
 import pydub
 import speech_recognition as sr
+from fake_useragent import UserAgent
 from selenium import webdriver
 from random_user_agent.params import SoftwareName, OperatingSystem
 from random_user_agent.user_agent import UserAgent
+from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -19,10 +20,14 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
 import constants
+from Utils import log_exception, log_info, create_empty_file, log_warning, supported_categories, \
+    get_current_pst_format_timestamp, wait_random, delete_dir, SlowIPException
+
+from selenium_stealth import stealth
 
 CHROMEDRIVER_BIN_PATH = '/usr/local/bin/chromedriver'
 
-
+'''
 class LocaleInfo:
     def __init__(self, country_name, country_code, language_code, href):
         self.country_name = country_name
@@ -37,10 +42,11 @@ class LocaleInfo:
             "language_code": self.language_code,
             "href": self.href,
         })
+'''
 
 
 class Scraper:
-    def __init__(self, on_proxy=False, headless=True, locale_code='us/en'):
+    def __init__(self, proxy=None, headless=True):
         options = Options()
 
         # setup userAgent
@@ -60,26 +66,46 @@ class Scraper:
             options.add_argument('--disable-gpu')
 
         # avoid being detected
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument("--disable-blink-features")
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_experimental_option("excludeSwitches", ['enable-automation'])
+        # mobile_emulation = {
+        # "userAgent": "Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"}
+        # options.add_experimental_option("mobileEmulation", mobile_emulation)
+        options.add_experimental_option('useAutomationExtension', False)
 
         # setup proxy
-        if on_proxy:
-            # TODO:
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
-        else:
-            self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+        if proxy:
+            options.add_argument('--proxy-server=http://{}'.format(proxy))
+        self.driver = webdriver.Chrome(CHROMEDRIVER_BIN_PATH, options=options)
+        stealth(self.driver,
+                languages=["en-US", "en"],
+                vendor="Google Inc.",
+                platform="Win32",
+                webgl_vendor="Intel Inc.",
+                renderer="Intel Iris OpenGL Engine",
+                fix_hairline=True,
+                )
+        # self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        #     "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        # })
+        # with open('./stealth.min.js') as f:
+        #     js = f.read()
+        # self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        #     "source": js
+        # })
         self.print_ip()
-        self.locale_code = locale_code
         self.category_codes = supported_categories()
 
     def is_detected_by_anti_bot(self):
         if self.driver.find_elements_by_xpath('//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]'):
             log_info("detected by anti-bot")
+            create_empty_file(self.product_dir_path, "ANTIBOT")
             return True
         return False
 
-    def is_blocked(self):
+    def is_currently_blocked(self):
         if self.driver.find_elements_by_xpath('//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]'):
             self.driver.switch_to.frame(
                 self.driver.find_elements_by_xpath(
@@ -90,6 +116,11 @@ class Scraper:
             self.driver.switch_to.default_content()
             return False
         return False
+
+    def has_been_blocked(self):
+        block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
+        antibot_flag_path = os.path.join(self.product_dir_path, "ANTIBOT")
+        return os.path.exists(block_flag_path) and not os.path.exists(antibot_flag_path)
 
     def type_with_delay(self, xpath, value):
         try:
@@ -106,7 +137,8 @@ class Scraper:
             return False
         return True
 
-    def solve_recaptha(self):
+    def solve_recaptha(self, retry=0):
+
         def solve_audio_recaptha_attempt(retry_count=0):
             log_info("solve_audio_recaptha_attempt retry_count={}".format(retry_count))
             try:
@@ -155,6 +187,7 @@ class Scraper:
             numeric_string = re.sub("[^0-9]", "", processed_string)
             log_info('recapcha processed_string: {}'.format(numeric_string))
             self.type_with_delay('//input[@class="geetest_input"]', numeric_string)
+            wait_random(0.5, 1)
             self.driver.find_element_by_xpath('//input[@class="geetest_input"]').send_keys(Keys.ENTER)
             try:
                 WebDriverWait(self.driver, 20).until(
@@ -169,6 +202,10 @@ class Scraper:
                 return solve_audio_recaptha_attempt(retry_count=retry_count + 1)
             return True
 
+        if retry == 3:
+            log_warning("solving recapcha failed after 3 attempts")
+            return False
+
         time.sleep(random.uniform(2, 3))
         captcha_iframe = self.driver.find_element_by_xpath(
             '//iframe[contains(@src, "https://geo.captcha-delivery.com/captcha")]')
@@ -182,31 +219,26 @@ class Scraper:
             log_info("clicked verify button geetest_radar_btn")
             WebDriverWait(self.driver, 15).until(
                 expected_conditions.presence_of_element_located((By.XPATH, '//a[@class="geetest_voice"]')))
-            # WebDriverWait(self.driver, 30).until(expected_conditions.presence_of_element_located((By.XPATH, '//span[@class="geetest_reset_tip_content"] | //a[@class="geetest_voice"]')))
-            # if self.driver.find_elements_by_xpath('//span[@class="geetest_reset_tip_content"]'):
-            #     log_info("failed to load audio verification, refreshing")
-            #     self.driver.switch_to.default_content()
-            #     self.driver.refresh()
-            #     time.sleep(1)
-            #     return self.solve_recaptha()
-            # else:
             time.sleep(random.uniform(1, 2))
             self.driver.find_element_by_xpath('//a[@class="geetest_voice"]').click()
             log_info("clicked voice verify button geetest_voice")
         except Exception as ex:
             log_exception(ex)
             self.driver.switch_to.default_content()
-            return False
+            self.driver.refresh()
+            return self.solve_recaptha(retry + 1)
         anti_bot_solved = solve_audio_recaptha_attempt()
         self.driver.switch_to.default_content()
-        return anti_bot_solved
+        if anti_bot_solved:
+            return True
+        return self.solve_recaptha(retry + 1)
 
     def open_url_and_crack_antibot(self, url):
         try:
             self.driver.get(url)
             log_info("opened url: {}".format(url))
             time.sleep(random.uniform(2, 3))
-            if self.is_blocked():
+            if self.is_currently_blocked():
                 log_info('blocked!')
                 return False
             if self.is_detected_by_anti_bot():
@@ -307,11 +339,11 @@ class Scraper:
     #     create_empty_file(self.data_dir_path, "SUCCESS_CATEGORY")
     #     return True
 
-    def create_timestamped_data_dir(self):
-        delete_dir(os.path.join(os.getcwd(), 'temp/scraper'))
+    def create_timestamped_data_dir(self, locale_code):
+        delete_dir(os.path.join(os.getcwd(), 'temp', locale_code, 'scraper'))
 
         self.timestamp = get_current_pst_format_timestamp()
-        self.temp_dir_path = os.path.join(os.getcwd(), 'temp/scraper/{}'.format(self.timestamp))
+        self.temp_dir_path = os.path.join(os.getcwd(), 'temp', locale_code, 'scraper/{}'.format(self.timestamp))
         if not os.path.isdir(self.temp_dir_path):
             os.makedirs(self.temp_dir_path)
         self.product_dir_path = os.path.join(self.temp_dir_path, 'product')
@@ -321,23 +353,31 @@ class Scraper:
     def get_timestamp(self):
         return self.timestamp
 
-    def get_product_info(self):
+    def open_with_timeout(self, URL, timeout):
+        time_start = datetime.now()
+        self.driver.get(URL)
+        time_spent = (datetime.now() - time_start).total_seconds()
+        if time_spent > timeout:
+            raise SlowIPException("{} loading too slow. time spent: {}".format(URL, time_spent))
+
+    def get_product_info(self, locale_code):
 
         def get_product_info_from_category(category, retry=0):
-            if retry == 3:
+            if retry == 2:
                 log_info("get_product_info_from_category retry limit hit")
                 return False
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
-            URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
+            URL = constants.HERMES_PRODUCT_API.format(locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
 
             # workaround to simulate human behavior
             blocked = True
             attempt = 0
-            while attempt < 3:
+            while attempt < 2:
                 attempt += 1
+                log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
-                wait_random(3, 4)
-                if not self.is_blocked():
+                wait_random(1, 2)
+                if not self.is_currently_blocked():
                     blocked = False
                     break
                 else:
@@ -352,92 +392,92 @@ class Scraper:
             if self.is_detected_by_anti_bot():
                 if self.solve_recaptha():
                     log_info('solve_recaptha done!')
-                    open_success = True
+                    recaptha_solved = True
                 else:
                     log_info('solve_recaptha failed!')
-                    open_success = False
+                    recaptha_solved = False
             else:
-                open_success = True
+                recaptha_solved = True
 
-            if not open_success:
+            if not recaptha_solved:
                 return get_product_info_from_category(category, retry + 1)
-            try:
-                WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
-            except Exception:
-                log_info("failed to load json response")
+
+            total = None
+            for i in range(3):
+                try:
+                    wait_random(2, 3)
+                    response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
+                    assert response_json['products']['items']
+                    total = response_json['total']
+                    log_info('total product count = {}'.format(total))
+                    break
+                except Exception:
+                    log_info("failed to load response_json attempt: {}".format(i))
+                    self.driver.refresh()
+            if not total:
                 return get_product_info_from_category(category, retry + 1)
-            response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
-            try:
-                total = response_json['total']
-            except Exception:
-                log_info("invalid response_json: {}".format(response_json))
-                return get_product_info_from_category(category, retry + 1)
-            log_info('total product count = {}'.format(total))
+            # try:
+            #     wait_random(2, 3)
+            #     WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
+            # except Exception:
+            #     log_info("failed to detect '//html/body/pre' with {}".format(URL))
+            #     return get_product_info_from_category(category, retry + 1)
+            # response_json = json.loads(self.driver.find_element_by_xpath('//html/body/pre').text)
+            # try:
+            #     total = response_json['total']
+            #     log_info('total product count = {}'.format(total))
+            # except Exception:
+            #     log_info("invalid response_json: {}".format(response_json))
+            #     return get_product_info_from_category(category, retry + 1)
+
+            reach_end_of_product_list = False
             results = []
             offset = 0
-            while 1:
+            while not reach_end_of_product_list:
                 products = response_json['products']['items']
                 log_info('current product list count = {}'.format(len(products)))
                 for p in products:
                     results.append(p)
                 offset += constants.PRODUCT_PAGE_SIZE
-                URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
+                URL = constants.HERMES_PRODUCT_API.format(locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
-                wait_random(0.5, 1)
                 self.driver.get(URL)
                 try:
-                    WebDriverWait(self.driver, 10).until(
-                        lambda driver: driver.find_element_by_tag_name("pre").text)
-                    wait_random(0.5, 1)
-                    response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
-                    if 'total' not in response_json:
-                        log_exception("total is not a field of: {}".format(response_json))
-                        return get_product_info_from_category(category, retry + 1)
-                    if not response_json['products']['items']:
-                        break
+                    wait_random(2, 3)
+                    WebDriverWait(self.driver, 10).until(lambda d: len(d.find_elements_by_xpath('//html/body/pre')) > 0)
                 except Exception:
-                    log_exception("load json failed: {}".format(URL))
+                    log_info("failed to load json response")
                     return get_product_info_from_category(category, retry + 1)
-            '''
-            num_of_extra_tab_needed = int((total-1)/constants.PRODUCT_PAGE_SIZE)
-            for i in range(num_of_extra_tab_needed):
-                wait_random(2, 3)
-                offset = (i+1) * constants.PRODUCT_PAGE_SIZE
-                URL = constants.HERMES_PRODUCT_API.format(self.locale_code, category,
-                                                          constants.PRODUCT_PAGE_SIZE,
-                                                          offset)
-                self.driver.execute_script("window.open('{}');".format(URL))
-            wait_random(5, 6)
-            for window_handler_id in self.driver.window_handles:
-                wait_random(1, 1.5)
-                self.driver.switch_to.window(window_handler_id)
                 try:
                     response_json = json.loads(self.driver.find_element_by_tag_name("pre").text)
-                    products = response_json['products']['items']
-                    log_info('current product list count = {}'.format(len(products)))
-                    for p in products:
-                        results.append(p)
                 except Exception:
-                    close_all_other_tabs(self.driver)
                     log_exception("load json failed: {}".format(URL))
+                if not response_json or 'total' not in response_json:
+                    log_exception("invalid json response: {}".format(response_json))
                     return get_product_info_from_category(category, retry + 1)
+                if response_json['total'] == 0 or not response_json['products']['items']:
+                    log_info('reached end of product list')
+                    reach_end_of_product_list = True
 
-            close_all_other_tabs(self.driver)
-            '''
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
                 log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
                 return get_product_info_from_category(category, retry + 1)
             file_path = os.path.join(self.product_dir_path, category)
-            with open(file_path, 'w+') as f:
-                for r in results:
-                    json.dump(r, f)
-                    f.write('\n')
-            log_info('results dump finished')
+            try:
+                with open(file_path, 'w+') as f:
+                    for r in results:
+                        json.dump(r, f)
+                        f.write('\n')
+                log_info('results dump finished')
+            except Exception as e:
+                log_exception(e)
+                return get_product_info_from_category(category, retry + 1)
             return True
 
-        self.create_timestamped_data_dir()
+        log_info("Started scraping product info for {}...".format(locale_code))
+        self.create_timestamped_data_dir(locale_code)
         for category_code in self.category_codes:
             if get_product_info_from_category(category_code):
                 create_empty_file(self.product_dir_path, "SUCCESS_{}".format(category_code))
@@ -449,7 +489,6 @@ class Scraper:
         if not self.timestamp:
             return "NOT_READY", results
         flag = "SUCCESS"
-        block_flag_path = os.path.join(self.product_dir_path, "BLOCKED")
         for category_code in self.category_codes:
             category_success_file_path = os.path.join(self.product_dir_path, "SUCCESS_{}".format(category_code))
             if os.path.exists(category_success_file_path):
@@ -457,20 +496,46 @@ class Scraper:
             else:
                 results[category_code] = "FAIL"
                 flag = "FAIL"
-        if os.path.exists(block_flag_path):
+        if self.has_been_blocked():
             flag = "BLOCKED"
         return flag, results
 
     def print_ip(self):
         try:
             self.driver.get('https://api.ipify.org/')
+            log_info("checking ip")
+            WebDriverWait(self.driver, 2).until(expected_conditions.presence_of_element_located(
+                (By.XPATH, '//html/body/pre')))
             detected_ip = self.driver.find_element_by_xpath('//html/body/pre').text
-            print('ip: {}'.format(detected_ip))
+            log_info('ip: {}'.format(detected_ip))
         except Exception:
-            print('print_ip exception')
-
-    def get_timestamp(self):
-        return self.timestamp
+            log_info('print_ip exception')
+            raise SlowIPException("proxy slow")
 
     def terminate(self):
         self.driver.quit()
+
+# port = 20001
+# while port <= 20300:
+# scraper = Scraper(on_proxy=True, headless=True)
+# scraper.terminate()
+#     port += 1
+
+# def thread_function(port):
+#     scraper = Scraper(port, on_proxy=True, headless=True)
+#     scraper.terminate()
+#
+# t = threading.Thread(target=thread_function, args=(20001,))
+# t.start()
+
+# port = 20001
+# threads = []
+# while port <= 20100:
+#     for p in range(port, port+20):
+#         t = threading.Thread(target=thread_function, args=(p,))
+#         t.start()
+#         threads.append(t)
+#     for t in threads:
+#         t.join()
+#     threads = []
+#     port += 20

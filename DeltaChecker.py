@@ -1,7 +1,9 @@
 import json
 import os
 
+import firebase_admin
 import pyrebase
+
 import firebase_admin
 from firebase_admin import storage, credentials
 
@@ -12,6 +14,7 @@ service_account_credentials = credentials.Certificate('credentials/firebase_serv
 with open('credentials/firebase_credentials.json', 'r') as f:
     firebase_credentials = json.load(f)
 firebase_admin.initialize_app(service_account_credentials, firebase_credentials)
+
 
 class StorageFileTransformer:
     def __init__(self):
@@ -35,28 +38,60 @@ class StorageFileTransformer:
     #     except Exception as s:
     #         log_exception(s)
 
+
+class StorageFileTransformer:
+    def __init__(self):
+        self.bucket = storage.bucket()
+
+    def upload(self, destination_path, from_path):
+        try:
+            log_info("Uploading {} -> {}".format(from_path, destination_path))
+            blob = self.bucket.blob(destination_path)
+            blob.upload_from_filename(from_path)
+            log_info("Uploaded.")
+        except Exception as s:
+            log_exception(s)
+
+    # def download(self, destination_path, from_path):
+    #     try:
+    #         log_info("Downloading {} -> {}".format(from_path, destination_path))
+    #         blob = self.bucket.blob(from_path)
+    #         blob.download_to_filename(destination_path)
+    #         log_info("Downloaded.")
+    #     except Exception as s:
+    #         log_exception(s)
+
+
 class DeltaChecker:
     def __init__(self):
-        self.temp_dir_path = os.path.join(os.getcwd(), 'temp', 'delta')
-        if not os.path.isdir(self.temp_dir_path):
-            os.makedirs(self.temp_dir_path)
-
         with open('credentials/firebase_credentials.json', 'r') as f:
             credentials = json.load(f)
         self.firebase = pyrebase.initialize_app(credentials)
         self.storage = self.firebase.storage()
         self.database = self.firebase.database()
-        self.scraped_data_dir_path = os.path.join(os.getcwd(), 'temp', 'scraper')
-        self.forward_data_dir_path = os.path.join(os.getcwd(), 'temp', 'forward')
         self.fileTransformer = StorageFileTransformer()
 
-    def get_timestamp_scraped_forward(self):
-        return self.database.child('timestamp_scraped_forward').get().val()
+    def temp_dir_path(self, locale_code):
+        path = os.path.join(os.getcwd(), 'temp', locale_code, 'delta')
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        return path
 
-    def update_timestamp_scraped_forward(self, timestamp):
-        self.database.child('timestamp_scraped_forward').set(timestamp)
+    def scraped_data_dir_path(self, locale_code):
+        return os.path.join(os.getcwd(), 'temp', locale_code, 'scraper')
+
+
+    def forward_data_dir_path(self, locale_code):
+        return os.path.join(os.getcwd(), 'temp', locale_code, 'forward')
+
+    def get_timestamp_scraped_forward(self, locale_code):
+        return self.database.child('{}/timestamp_scraped_forward'.format(locale_code)).get().val()
+
+    def update_timestamp_scraped_forward(self, timestamp, locale_code):
+        self.database.child('{}/timestamp_scraped_forward'.format(locale_code)).set(timestamp)
 
     def download(self, cloud_path, local_path):
+        log_info("download. cloud_path: {} local_path: {}".format(cloud_path, local_path))
         try:
             self.storage.child(cloud_path).download(filename=local_path)
             return
@@ -68,23 +103,24 @@ class DeltaChecker:
         except Exception:
             log_info("self.storage.child(cloud_path).download(path=local_path, filename=local_path) exception")
 
-    def download_data_for_delta_check(self, category_code, timestamp_base, test_timestamp):
-        path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path, timestamp_base, test_timestamp)
+    def download_data_for_delta_check(self, category_code, timestamp_base, test_timestamp, locale_code):
+        log_info("download_data_for_delta_check: timestamp_base: {} test_timestamp: {}".format(timestamp_base, test_timestamp))
+        path_to_local_dir = "{}/{}_to_{}".format(self.temp_dir_path(locale_code), timestamp_base, test_timestamp)
         if not os.path.isdir(path_to_local_dir):
             os.makedirs(path_to_local_dir)
-        path_to_base_data_on_cloud = "products/{}/{}".format(timestamp_base, category_code)
+        path_to_base_data_on_cloud = "{}/products/{}/{}".format(locale_code, timestamp_base, category_code)
         path_to_base_data = "{}/{}_{}".format(path_to_local_dir, timestamp_base, category_code)
         self.download(path_to_base_data_on_cloud, path_to_base_data)
         if not os.path.isfile(path_to_base_data):
             return None
-        path_to_test_data_on_cloud = "products/{}/{}".format(test_timestamp, category_code)
+        path_to_test_data_on_cloud = "{}/products/{}/{}".format(locale_code, test_timestamp, category_code)
         path_to_test_data = "{}/{}_{}".format(path_to_local_dir, test_timestamp, category_code)
         self.download(path_to_test_data_on_cloud, path_to_test_data)
         if not os.path.isfile(path_to_test_data):
             return None
         return path_to_local_dir
 
-    def get_delta_info(self, category, timestamp_base, timestamp_forward):
+    def get_delta_info(self, category, timestamp_base, timestamp_forward, locale_code):
         def is_same(item1, item2):
             check_fields = ['price', 'stock']
             for field in check_fields:
@@ -92,8 +128,10 @@ class DeltaChecker:
                     return False
             return True
 
-        data_dir_path = self.download_data_for_delta_check(category, timestamp_base, timestamp_forward)
+        log_info("Start getting delta info. timestamp_base: {} timestamp_forward: {}".format(timestamp_base, timestamp_forward))
+        data_dir_path = self.download_data_for_delta_check(category, timestamp_base, timestamp_forward, locale_code)
         if not data_dir_path:
+            log_info("Failed to download! {}".format(data_dir_path))
             return None
         all_base_data = {}
         all_test_data = {}
@@ -132,104 +170,113 @@ class DeltaChecker:
         log_info("updated items count: {}".format(len(updated_items)))
         return {"ADDED": added_items, "REMOVED": removed_items, "UPDATED": updated_items}
 
-    def update_realtime_delta(self, timestamp_forward, timestamp_base=None):
+    def update_realtime_delta_if_necessary(self, locale_code, timestamp_forward=None, timestamp_base=None):
         def get_realtime_delta_timestamp_base():
-            return self.database.child('delta_realtime/timestamp_base').get().val()
+            return self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).get().val()
 
+        if not timestamp_forward:
+            timestamp_forward = self.get_timestamp_scraped_forward(locale_code)
         if not timestamp_base:
             timestamp_base = get_realtime_delta_timestamp_base()
-        log_info("delta realtime check ({} -> {})".format(timestamp_base, timestamp_forward))
+        log_info("delta realtime check {} ({} -> {})".format(locale_code, timestamp_base, timestamp_forward))
+        if not timestamp_base:
+            self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).set(timestamp_forward)
+            return "INIT"
         if timestamp_base == timestamp_forward:
             log_info("skip delta check (timestamp_base equals to timestamp_forward)")
             return "SKIP"
         assert timestamp_base < timestamp_forward
 
-        delta_db_path = "delta_realtime/{}/{}_to_{}".format(get_current_pst_format_year_month(), timestamp_base, timestamp_forward)
-        check_delta_results = {}
+        update_stamp = "{}_to_{}".format(timestamp_base, timestamp_forward)
+        delta_db_path = "{}/delta_realtime/{}/{}".format(locale_code, timestamp_base[:6], update_stamp)
+        check_delta_result = "SKIP"
         delta_realtime_uploaded = False
+        total_delta_info = {}
         for category in supported_categories():
-            delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward)
+            delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward, locale_code)
+            total_delta_info[category] = delta_info
             if not delta_info:
                 log_info("no delta info found")
-                check_delta_results[category] = "SKIP"
                 continue
             if len(delta_info["ADDED"]) + len(delta_info["REMOVED"]) + len(delta_info["UPDATED"]) == 0:
                 log_info("no added/removed/updated items detected from {} to {} for {}".format(timestamp_base,
                                                                                                timestamp_forward,
                                                                                                category))
-                check_delta_results[category] = "SKIP"
                 continue
-
+            # TODO: make time_added and time_removed a list
             for type in delta_info:
                 for item_json in delta_info[type]:
                     sku = item_json['sku']
                     self.database.child(delta_db_path).child(category).child(type).child(sku).set(item_json)
                     if type == 'ADDED':
-                        self.database.child('product_updates').child(category).child(type).child(sku).set(item_json)
-                        self.database.child('product_updates').child(category).child(type).child(sku).child(
+                        self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).set(item_json)
+                        self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).child(
                             'time_added').set(timestamp_forward)
-                        if self.database.child('product_updates').child(category).child("REMOVED").child(sku).get().val():
-                            self.database.child('product_updates').child(category).child(type).child(sku).child(
+                        if self.database.child('{}/product_updates'.format(locale_code)).child(category).child("REMOVED").child(sku).get().val():
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).child(
                                 'is_restock').set(True)
-                            self.database.child('product_updates').child(category).child("REMOVED").child(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child("REMOVED").child(
                                 sku).remove()
                         else:
-                            self.database.child('product_updates').child(category).child(type).child(sku).child(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).child(
                                 'is_restock').set(False)
                     if type == 'REMOVED':
-                        if self.database.child('product_updates').child(category).child("ADDED").child(sku).get().val():
-                            item_detail = self.database.child('product_updates').child(
+                        if self.database.child('{}/product_updates'.format(locale_code)).child(category).child("ADDED").child(sku).get().val():
+                            item_detail = self.database.child('{}/product_updates'.format(locale_code)).child(
                                 category).child("ADDED").child(sku).get().val()
-                            time_added = get_datetime_from_string(self.database.child('product_updates').child(
+                            time_added = get_datetime_from_string(self.database.child('{}/product_updates'.format(locale_code)).child(
                                 category).child("ADDED").child(sku).child('time_added').get().val())
                             time_removed = get_datetime_from_string(timestamp_forward)
                             time_available_hours = (time_removed - time_added).total_seconds() / 3600
                             item_detail['time_removed'] = timestamp_forward
                             item_detail['time_available_hours'] = time_available_hours
-                            self.database.child('product_updates').child(category).child(type).child(sku).set(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child(type).child(sku).set(
                                 item_detail)
-                            self.database.child('product_updates').child(category).child("ADDED").child(
+                            self.database.child('{}/product_updates'.format(locale_code)).child(category).child("ADDED").child(
                                 sku).remove()
-            check_delta_results[category] = "SUCCESS"
+            check_delta_result = "SUCCESS"
             delta_realtime_uploaded = True
 
         if delta_realtime_uploaded:
+            log_info("updating realtime delta: {}".format(total_delta_info))
             self.database.child(delta_db_path).child("timestamp_base").set(timestamp_base)
             self.database.child(delta_db_path).child("timestamp_forward").set(timestamp_forward)
-            self.database.child('delta_realtime/timestamp_base').set(timestamp_forward)
-        return check_delta_results
+            self.database.child('{}/delta_realtime/last_update'.format(locale_code)).set(update_stamp)
+            self.database.child('{}/delta_realtime/timestamp_base'.format(locale_code)).set(timestamp_forward)
+        return check_delta_result
 
-    def update_daily_delta_if_necessary(self, timestamp_forward=None):
+    def update_daily_delta_if_necessary(self, locale_code, timestamp_forward=None):
 
         def get_daily_delta_timestamp_base():
-            return self.database.child('delta_daily/timestamp_base').get().val()
-
-        def get_timestamp_scraped_forward():
-            return self.database.child('timestamp_scraped_forward').get().val()
+            return self.database.child('{}/delta_daily/timestamp_base'.format(locale_code)).get().val()
 
         def should_update(timestamp_base, timestamp_forward):
             hours_since_last_update = (get_datetime_from_string(timestamp_forward) - get_datetime_from_string(
                 timestamp_base)).total_seconds() / 3600
             current_pst_hour = get_current_pst_time().hour
             in_time_window = current_pst_hour >= 16
+            log_info("should_update? current_pst_hour: {} hours_since_last_update: {}".format(current_pst_hour, hours_since_last_update))
             if in_time_window and hours_since_last_update >= 16:
                 return True
             else:
                 return False
 
         if not timestamp_forward:
-            timestamp_forward = get_timestamp_scraped_forward()
+            timestamp_forward = self.get_timestamp_scraped_forward(locale_code)
         timestamp_base = get_daily_delta_timestamp_base()
+        if not timestamp_base:
+            self.database.child('{}/delta_daily/timestamp_base'.format(locale_code)).set(timestamp_forward)
+            return "INIT"
         if not should_update(timestamp_base, timestamp_forward):
             log_info("No need to daily update")
             return "SKIP"
 
         log_info("delta daily check ({} -> {})".format(timestamp_base, timestamp_forward))
         date_today = get_current_pst_format_date()
-        daily_delta_db_path = "delta_daily/{}/{}".format(get_current_pst_format_year_month(), date_today)
+        daily_delta_db_path = "{}/delta_daily/{}/{}".format(locale_code, get_current_pst_format_year_month(), date_today)
         if self.database.child(daily_delta_db_path).get().val():
             log_warning("daily delta already existed: {}".format(daily_delta_db_path))
-            return "DAILY_DELTA_EXISTED"
+            return "SKIP"
         log_info("checking delta timestamp_base: {} timestamp_forward: {}".format(timestamp_base, timestamp_forward))
         if timestamp_base == timestamp_forward:
             log_info("skip delta check (timestamp_base equals to timestamp_forward)")
@@ -237,7 +284,7 @@ class DeltaChecker:
         assert timestamp_base < timestamp_forward
         check_delta_results = {}
         for category in supported_categories():
-            delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward)
+            delta_info = self.get_delta_info(category, timestamp_base, timestamp_forward, locale_code)
             if not delta_info:
                 log_info("no delta info found")
                 check_delta_results[category] = "SKIP"
@@ -254,20 +301,20 @@ class DeltaChecker:
                     self.database.child(daily_delta_db_path).child(category).child(type).child(sku).set(item_json)
             check_delta_results[category] = "SUCCESS"
 
-        self.database.child('delta_daily/timestamp_base').set(timestamp_forward)
+        self.database.child('{}/delta_daily/timestamp_base'.format(locale_code)).set(timestamp_forward)
         self.database.child(daily_delta_db_path).child("timestamp_base").set(timestamp_base)
         self.database.child(daily_delta_db_path).child("timestamp_forward").set(timestamp_forward)
         return "SUCCESS"
 
-    def is_scrape_success(self, timestamp):
+    def is_scrape_success(self, timestamp, locale_code):
         for category_code in supported_categories():
-            flag_path = os.path.join(self.scraped_data_dir_path, timestamp, "product", "SUCCESS_" + category_code)
+            flag_path = os.path.join(self.scraped_data_dir_path(locale_code), timestamp, "product", "SUCCESS_" + category_code)
             if not os.path.exists(flag_path):
                 log_warning(flag_path + " doesn't exist!")
                 return False
         return True
 
-    def upload_products_if_necessary(self, timestamp):
+    def upload_products_if_necessary(self, timestamp, locale_code):
 
         def is_identical(forward_data_path, test_data_path):
 
@@ -307,24 +354,26 @@ class DeltaChecker:
                 log_exception("Failed to check identical of two files")
                 return True
 
-        if not self.is_scrape_success(timestamp):
+        if not self.is_scrape_success(timestamp, locale_code):
             log_warning("Not a success scrape with timestamp " + timestamp)
             return "INVALID_DATA_FAIL"
-        timestamp_scraped_forward = self.get_timestamp_scraped_forward()
-        if timestamp <= timestamp_scraped_forward:
-            log_warning("skip delta check (invalid timestamp: {} <= {})".format(timestamp, timestamp_scraped_forward))
+        timestamp_scraped_forward = self.get_timestamp_scraped_forward(locale_code)
+        if not timestamp_scraped_forward:
+            timestamp_scraped_forward = timestamp
+        if timestamp < timestamp_scraped_forward:
+            log_warning("skip delta check (invalid timestamp: {} < {})".format(timestamp, timestamp_scraped_forward))
             return "SKIP"
-        forward_data_dir_path = os.path.join(self.forward_data_dir_path, timestamp_scraped_forward)
+        forward_data_dir_path = os.path.join(self.forward_data_dir_path(locale_code), timestamp_scraped_forward)
         if not os.path.isdir(forward_data_dir_path):
             os.makedirs(forward_data_dir_path)
-        test_data_dir_path = os.path.join(self.scraped_data_dir_path, timestamp, "product")
+        test_data_dir_path = os.path.join(self.scraped_data_dir_path(locale_code), timestamp, "product")
         should_upload = False
         try:
             for category_code in supported_categories():
                 local_forward_file_path = os.path.join(forward_data_dir_path, category_code)
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
                 if not os.path.exists(local_forward_file_path):
-                    cloud_forward_file_path = "products/{}/{}".format(timestamp_scraped_forward, category_code)
+                    cloud_forward_file_path = "{}/products/{}/{}".format(locale_code, timestamp_scraped_forward, category_code)
                     self.download(cloud_forward_file_path, local_forward_file_path)
                     if not os.path.exists(local_forward_file_path):
                         log_exception("Downloading {} failed! Upload scraped data with no diff check".format(cloud_forward_file_path))
@@ -342,14 +391,15 @@ class DeltaChecker:
         try:
             for category_code in supported_categories():
                 local_test_file_path = os.path.join(test_data_dir_path, category_code)
-                cloud_local_test_file_path = 'products/{}/{}'.format(timestamp, category_code)
+                cloud_local_test_file_path = '{}/products/{}/{}'.format(locale_code, timestamp, category_code)
                 self.fileTransformer.upload(cloud_local_test_file_path, local_test_file_path)
                 log_info("{} has been uploaded to {}".format(local_test_file_path, cloud_local_test_file_path))
-        except Exception:
-            log_exception(
-                "Exception during uploading {} to {}".format(local_test_file_path, cloud_local_test_file_path))
+                # workaround to make sure file is uploaded (pyrebase uploads folder accidentally instead)
+                self.storage.child(cloud_local_test_file_path).put(local_test_file_path)
+        except Exception as e:
+            log_exception("Exception during uploading {}".format(e))
             return "UPLOAD_FAIL"
-        self.update_timestamp_scraped_forward(timestamp)
+        self.update_timestamp_scraped_forward(timestamp, locale_code)
         return "SUCCESS"
 
 # ft = StorageFileTransformer()
@@ -357,24 +407,7 @@ class DeltaChecker:
 # ft.upload("test/file", "temp/delta/20210613_16_28_56_to_20210614_14_46_07/20210613_16_28_56_BIJOUTERIE")
 # ft.download("/Users/chengjiang/Dev/lindy/temp/file", "test/file")
 
-'''Daily Delta'''
-# ts_list = [
-# "20210515_22_57_48",
-# "20210515_23_12_48",
-# "20210515_23_17_48",
-# "20210515_23_27_48",
-# "20210516_04_07_52",
-# "20210516_05_27_54",
-# "20210516_10_47_59",
-# "20210516_11_27_59",
-# "20210516_13_03_01",
-# "20210516_17_23_04",
-# "20210516_20_13_07",
-# "20210516_21_08_08",
-# ]
-#
 # deltaChecker = DeltaChecker()
-# deltaChecker.download("products/20210614_14_44_02/BIJOUTERIE", "/Users/chengjiang/Dev/lindy/temp/BIJOUTERIE")
 # i = 0
 # while i < len(ts_list) - 1:
 #     deltaChecker.update_realtime_delta(timestamp_base=ts_list[i+1], timestamp_forward=ts_list[i], should_update_timestamp=False)
@@ -382,6 +415,7 @@ class DeltaChecker:
 #
 # deltaChecker.update_daily_delta()
 # deltaChecker = DeltaChecker()
+# deltaChecker.update_realtime_delta_if_necessary('us_en', '20210615_09_39_18','20210615_09_09_17')
 # deltaChecker.upload_products_if_necessary("20210521_23_41_00")
 # deltaChecker.update_realtime_delta("20210521_23_41_00")
 # deltaChecker.update_daily_delta_if_necessary("20210525_16_49_14")
