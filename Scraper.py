@@ -9,6 +9,7 @@ import urllib
 import pydub
 import speech_recognition as sr
 from fake_useragent import UserAgent
+from selenium import webdriver
 from random_user_agent.params import SoftwareName, OperatingSystem
 from random_user_agent.user_agent import UserAgent
 from selenium import webdriver
