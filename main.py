@@ -4,7 +4,7 @@ import argparse
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from UpdateTask import UpdateTask
-from Utils import SlowIPException, log_exception, supported_locales, ConsecutiveFailureException, timeout, wait_random, \
+from Utils import SlowIPException, log_exception, supported_locales,  ConsecutiveTimeoutsException, ConsecutiveBlocksException, timeout, wait_random, \
     TimeoutException, log_warning, log_info
 
 
@@ -17,7 +17,10 @@ def scrape_with_timeout(local_code, job_type, proxy_list=None, debug=False):
             task.start()
         except SlowIPException as e:
             log_exception(e)
-        except ConsecutiveFailureException as e:
+        except ConsecutiveBlocksException as e:
+            log_exception(e)
+            failed = True
+        except ConsecutiveTimeoutsException as e:
             log_exception(e)
             failed = True
         except TimeoutException:
@@ -45,7 +48,10 @@ def scrape(local_code, job_type, proxy_list=None, debug=False):
             task.start()
         except SlowIPException as e:
             log_exception(e)
-        except ConsecutiveFailureException as e:
+        except ConsecutiveBlocksException as e:
+            log_exception(e)
+            failed = True
+        except ConsecutiveTimeoutsException as e:
             log_exception(e)
             failed = True
         except Exception as e:

@@ -8,7 +8,7 @@ import pyrebase
 from DeltaChecker import DeltaChecker
 from EmailSender import EmailSender
 from Scraper import Scraper
-from Utils import log_info, get_current_pst_time, log_warning, ConsecutiveFailureException
+from Utils import log_info, get_current_pst_time, log_warning, ConsecutiveTimeoutsException, ConsecutiveBlocksException
 
 
 def remove_temp_dir(locale_code):
@@ -44,7 +44,9 @@ class ScrapeTask:
     def start(self):
         log_info("Start scraping..")
         index = 0
-        sequential_failures = 0
+        sequential_blocks = 0
+        sequential_timeouts = 0
+        timeout_resets = 0
         while 1:
             remove_temp_dir(self.local_code)
             start_time = get_current_pst_time()
@@ -76,19 +78,36 @@ class ScrapeTask:
                                                     scrape_flag,
                                                     scrape_results,
                                                     products_upload_result))
-            sequential_failures += 1
-            if scrape_flag == "SUCCESS":
-                sequential_failures = 0
-                time_until_next_scrape = self.interval_seconds - time_used_in_seconds
-                log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
-                if time_until_next_scrape > 0:
-                    time.sleep(time_until_next_scrape)
-            elif scrape_flag == "BLOCKED":
+
+            if scrape_flag == "BLOCKED":
+                sequential_blocks += 1
                 self.scraper.terminate()
                 log_warning("Starting new scraper instance after being blocked..")
                 self.scraper = Scraper(proxy=self.get_proxy(get_next=True), headless=not self.debug)
-            if sequential_failures == 10:
-                raise ConsecutiveFailureException("Scraper failed for 10 times in a row")
+            else:
+                sequential_blocks = 0
+                if scrape_flag == "SUCCESS":
+                    time_until_next_scrape = self.interval_seconds - time_used_in_seconds
+                    log_info("========== time_until_next_scrape:{}".format(time_until_next_scrape))
+                    if time_used_in_seconds > 120:
+                        sequential_timeouts += 1
+                        if sequential_timeouts == 3:
+                            if timeout_resets == 2:
+                                raise ConsecutiveTimeoutsException("Scraper failed for 3 times in a row")
+                            else:
+                                timeout_resets += 1
+                                sequential_timeouts = 0
+                                self.scraper.terminate()
+                                log_warning("Starting new scraper instance after sequential timeout..")
+                                self.scraper = Scraper(proxy=self.get_proxy(get_next=True), headless=not self.debug)
+                    else:
+                        sequential_timeouts = 0
+                        timeout_resets = 0
+                    if time_until_next_scrape > 0:
+                        time.sleep(time_until_next_scrape)
+
+            if sequential_blocks == 3:
+                raise ConsecutiveBlocksException("Scraper failed for 3 times in a row")
             index += 1
 
     def terminate_scraper(self):

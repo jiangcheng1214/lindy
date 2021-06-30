@@ -17,7 +17,11 @@ class SlowIPException(Exception):
     pass
 
 
-class ConsecutiveFailureException(Exception):
+class ConsecutiveBlocksException(Exception):
+    pass
+
+
+class ConsecutiveTimeoutsException(Exception):
     pass
 
 
