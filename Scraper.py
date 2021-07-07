@@ -54,6 +54,7 @@ class Scraper:
         operation_systems = [OperatingSystem.WINDOWS.name, OperatingSystem.LINUX.name]
         user_agent_rotator = UserAgent(software_names=software_names, operation_systems=operation_systems, limit=100)
         user_agent = user_agent_rotator.get_random_user_agent()
+        options.add_argument('--no-sandbox')
         options.add_argument('user-agent={}'.format(user_agent))
 
         # mute audio during cracking recapcha
@@ -62,7 +63,6 @@ class Scraper:
         # setup headless mode
         if headless:
             options.add_argument('--headless')
-            options.add_argument('--no-sandbox')
             options.add_argument('--disable-gpu')
 
         # avoid being detected
@@ -368,7 +368,6 @@ class Scraper:
                 return False
             log_info("get_product_info_from_category:{} retry:{}".format(category, retry))
             URL = constants.HERMES_PRODUCT_API.format(locale_code, category, constants.PRODUCT_PAGE_SIZE, 0)
-
             # workaround to simulate human behavior
             blocked = True
             attempt = 0
@@ -381,6 +380,7 @@ class Scraper:
                     blocked = False
                     break
                 else:
+                    log_info("get URL:{}".format(URL))
                     self.driver.get('https://www.google.com/')
                     wait_random(3, 4)
 
@@ -442,6 +442,7 @@ class Scraper:
                 URL = constants.HERMES_PRODUCT_API.format(locale_code, category,
                                                           constants.PRODUCT_PAGE_SIZE,
                                                           offset)
+                log_info("get URL:{}".format(URL))
                 self.driver.get(URL)
                 try:
                     wait_random(2, 3)
@@ -462,8 +463,8 @@ class Scraper:
 
             log_info('results count = {}'.format(len(results)))
             if len(results) != total:
-                log_info("result count doesn't match, result count: {}, should be {}".format(len(results), total))
-                return get_product_info_from_category(category, retry + 1)
+                log_warning("result count doesn't match, result count: {}, should be {}".format(len(results), total))
+                # return get_product_info_from_category(category, retry + 1)
             file_path = os.path.join(self.product_dir_path, category)
             try:
                 with open(file_path, 'w+') as f:
@@ -478,6 +479,10 @@ class Scraper:
 
         log_info("Started scraping product info for {}...".format(locale_code))
         self.create_timestamped_data_dir(locale_code)
+        launching_url = 'https://www.google.com/'
+        log_info("get URL:{}".format(launching_url))
+        self.driver.get(launching_url)
+        wait_random(3, 4)
         for category_code in self.category_codes:
             if get_product_info_from_category(category_code):
                 create_empty_file(self.product_dir_path, "SUCCESS_{}".format(category_code))
