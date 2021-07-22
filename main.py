@@ -1,6 +1,9 @@
 import re
 import sys
 import argparse
+
+from pyvirtualdisplay import Display
+
 from EmailSender import EmailSender
 from ScrapeTask import ScrapeTask
 from UpdateTask import UpdateTask
@@ -89,6 +92,9 @@ if __name__ == "__main__":
             proxy_list = re.split(',', args.proxy_list)
         else:
             proxy_list = None
+        if args.debug:
+            display = Display(visible=0, size=(800, 600))
+            display.start()
         if args.timeout:
             scrape_with_timeout(args.locale, job_type, proxy_list, debug=args.debug)
         else:
