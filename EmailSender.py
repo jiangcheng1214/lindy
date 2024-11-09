@@ -163,11 +163,9 @@ class EmailSender:
 
         update_stamp = last_update_stamp.split('_to_')[-1]
         message = sendgrid.Mail(
-            from_email='chengjiang1214@gmail.com',
+            from_email='',
             to_emails=[
-                'jiangcheng1214@gmail.com',
-                'haotianwu3@gmail.com',
-                'limeihui816@hotmail.com'
+                '',
             ],
             subject='📢 Hermes realtime update {} {}'.format(flag_for_country(locale_code), update_stamp),
             html_content=html_content
@@ -280,11 +278,9 @@ class EmailSender:
         log_info(daily_delta_data)
 
         message = sendgrid.Mail(
-            from_email='chengjiang1214@gmail.com',
+            from_email='',
             to_emails=[
-                'jiangcheng1214@gmail.com',
-                'haotianwu3@gmail.com',
-                'limeihui816@hotmail.com'
+                
             ],
             subject='📢 {} Hermes daily update {}'.format(date_string, flag_for_country(locale_code)),
             html_content=html_content
@@ -296,9 +292,9 @@ class EmailSender:
 
     def notice_admins_on_exception(self, exception, local_code, job_type):
         message = sendgrid.Mail(
-            from_email='chengjiang1214@gmail.com',
+            from_email='',
             to_emails=[
-                'jiangcheng1214@gmail.com',
+                
             ],
             subject='Hermes scraper exception {}'.format(get_current_pst_format_timestamp()),
             html_content='''
